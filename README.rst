@@ -1,8 +1,8 @@
-scenariotest - Generate test scenarios using unittest
-=====================================================
+gentest - Generate test scenarios using unittest
+================================================
 
 Determine and write all possible test scenarios of finite state machines is a hard task.
-**scenariotest** generate test scenarios from state specification.
+**gentest** generates test scenarios from state specification.
 
 
 An example to test this state machine.
@@ -19,12 +19,12 @@ A is a initial state, call m1 shifts the state from A to B and call m2 shifts th
 
 We define each state using **TestState** class::
 
-    from scenariotest import TestState, previous
+    from gentest import TestState, previous
     
     class StateA(TestState, start=True): # start=True because A is initial state.
         def input(self):
             # code to go to initial state 'A'
-            self.machine = Machine()
+            type(self).machine = Machine()
 
         def test_a(self):
             # You can use unittest assert methods.
@@ -32,7 +32,7 @@ We define each state using **TestState** class::
     class StateB(TestState, previous=['StateA']): # previous=['StateA'] because we can go to this state from 'A'
         def input(self):
             # code to go to 'B' state from 'A'
-            self.machine.m1()
+            type(self).machine.m1()
 
         def test_b(self):
             # You can use unittest assert methods. 
@@ -43,12 +43,12 @@ We define each state using **TestState** class::
         @previous(['StateA'])
         def input(self):
             # code to go to 'C' state from 'A'
-            self.machine.m2()
+            type(self).machine.m2()
 
         @previous(['StateB'])
         def input(self):
             # code to go to 'C' state from 'B'
-            self.machine.m1()
+            type(self).machine.m1()
 
         def test_c(self):
             # You can use unittest assert methods. 

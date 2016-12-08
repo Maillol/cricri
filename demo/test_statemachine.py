@@ -1,4 +1,4 @@
-from scenariotest import TestState, previous
+from gentest import TestState, previous
 from statemachine import Machine
 
 

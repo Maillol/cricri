@@ -1,5 +1,5 @@
 import unittest
-from scenariotest import MultiDict, walk, previous
+from gentest import MultiDict, walk, previous
 
 
 class TestWalk(unittest.TestCase):
