@@ -77,5 +77,3 @@ class F(TestState, previous=['C', 'D', 'E']):
     def test_y(self):
         self.assertEqual(self.machine.y, 2)
 
-
-load_tests = TestState.get_load_tests()

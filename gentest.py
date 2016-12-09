@@ -139,7 +139,7 @@ class MetaTestState(type):
         return test
 
     @classmethod
-    def _generate_senarios(mcs):
+    def _generate_senarios(mcs, max_loop):
         """
         Return list of list of senario, each senario is a list of states.
         list of senario is grouped by module.
@@ -149,7 +149,7 @@ class MetaTestState(type):
             for previous_step in step.previous:
                 step_from_previous[previous_step].append(fullname(step))
 
-        return [walk(step_from_previous, start) 
+        return [walk(step_from_previous, start, max_loop)
                 for start in mcs.start_step.values()]
 
     @staticmethod
@@ -168,15 +168,13 @@ class MetaTestState(type):
                 return input_method
 
     @classmethod
-    def get_load_tests(mcs):
+    def get_load_tests(mcs, max_loop=1):
         """
         Build and return load_tests function.
         """
 
-        test_loader = unittest.defaultTestLoader
-        suite = unittest.TestSuite()
-
-        for senario_list in mcs._generate_senarios():
+        test_case_list = []
+        for senario_list in mcs._generate_senarios(max_loop):
             for senario in senario_list:
                 attrs = {}
                 previous_step_name = None
@@ -191,19 +189,22 @@ class MetaTestState(type):
                                in vars(step).items()
                                if name.startswith('test')))
 
-                    method_name = "test_{:>04}_{}".format(step_num, step_name.lower())
+                    method_name = "test_{:>04}_{}".format(
+                        step_num, step_name.split('.')[-1].lower())
+
                     attrs[method_name] = mcs._build_test_method(input_method,
                                                                 test_methods)
 
                     previous_step_name = step_name
 
-                test_case_subcls = type(''.join(senario),
-                                        (unittest.TestCase,), attrs)
-
-                tests = test_loader.loadTestsFromTestCase(test_case_subcls)
-                suite.addTests(tests)
+                test_case_list.append(type(''.join(name.split('.')[-1]
+                                      for name in senario),
+                                      (unittest.TestCase,), attrs))
 
         def load_tests(loader, tests, pattern):
+            suite = unittest.TestSuite()
+            for test in test_case_list:
+                suite.addTests(loader.loadTestsFromTestCase(test))
             return suite
 
         return load_tests
@@ -217,7 +218,7 @@ class MetaTestState(type):
             if previous is None:
                 cls.previous = []
             else:
-                cls.previous = ['{}.{}'.format(cls.__module__, prev) 
+                cls.previous = ['{}.{}'.format(cls.__module__, prev)
                                 for prev in previous]
 
             for attr_name, attr in attrs.items():
@@ -227,7 +228,7 @@ class MetaTestState(type):
                             input_method.previous_steps = cls.previous
                         else:
                             input_method.previous_steps = [
-                                '{}.{}'.format(cls.__module__, prev) 
+                                '{}.{}'.format(cls.__module__, prev)
                                 for prev in input_method.previous_steps]
 
             mcs.steps[fullname(cls)] = cls
