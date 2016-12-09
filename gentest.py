@@ -26,6 +26,7 @@ class MultiDict(dict):
         else:
             self._multi_values = {}
 
+        super().__init__(*args, **kwargs)
         for key in self._multi_values.values():
             dict.__setitem__(self, key, [])
 
@@ -38,7 +39,14 @@ class MultiDict(dict):
             self[new_key].append(value)
 
 
-def walk(graph, start):
+class _Final:
+    """
+    This singleton mark end of loop in graph
+    """
+
+
+
+def walk(graph, start, max_loop=1):
     """
     Find all path through graph.
 
@@ -47,17 +55,50 @@ def walk(graph, start):
     """
 
     paths = []
+    loops_from_first = defaultdict(list)
 
     def _walk(start, path):
-        if not graph[start]:
-            paths.append(path + (start,))
+        """
+        Find path all through graph and detect loop.
+        """
+        try:
+            index = path.index(start)
+        except ValueError:
+            if not graph[start]:
+                paths.append(path + (start,))
+            else:
+                for node in graph[start]:
+                    _walk(node, path + (start,))
         else:
-            for node in graph[start]:
-                _walk(node, path + (start,))
+            loops_from_first[start].append(path[index + 1:] + (start,))
+            paths.append(path + (start,))
 
     _walk(start, ())
-    return paths
 
+    # Create cartesian product of loops regarding max_loop.
+    original = loops_from_first.copy()
+    for _ in range(max_loop - 2):
+        tmp = defaultdict(list)
+        for start, loops in loops_from_first.items():
+            for loop_1 in loops:
+                for loop_2 in original[start]:
+                    tmp[start].append(loop_1 + loop_2)
+        loops_from_first = tmp
+
+    # Add loops to paths.
+    if max_loop > 1:
+        new_paths = []
+        for path in paths:
+            loops = loops_from_first[path[-1]]
+            if not loops:
+                new_paths.append(path)
+            else:
+                for loop in loops:
+                    new_paths.append(path + loop)
+
+        paths = new_paths
+
+    return paths
 
 class MetaTestState(type):
     """
@@ -246,4 +287,3 @@ class TestState(metaclass=MetaTestState):
                 type(self).machine.m1()
 
     """
-

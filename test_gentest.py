@@ -4,7 +4,7 @@ from gentest import MultiDict, walk, previous
 
 class TestWalk(unittest.TestCase):
 
-    g = {
+    simple_graph = {
         'A': ['B'],
         'B': ['C', 'G'],
         'C': ['D', 'E', 'G'],
@@ -14,8 +14,18 @@ class TestWalk(unittest.TestCase):
         'G': []
     }
 
-    def test_walk(self):
-        paths = walk(self.g, 'A')
+    graph_with_loop = {
+        'A': ['B'],
+        'B': ['C'],
+        'C': ['D', 'E'],
+        'D': ['B'],
+        'E': ['F', 'G'],
+        'F': ['D'],
+        'G': []
+    }
+
+    def test_walk_simple_graph(self):
+        paths = walk(self.simple_graph, 'A')
         expected = (
             ('A', 'B', 'C', 'D', 'G'),
             ('A', 'B', 'C', 'E', 'F', 'G'),
@@ -23,7 +33,29 @@ class TestWalk(unittest.TestCase):
             ('A', 'B', 'C', 'G'),
             ('A', 'B', 'G'),
         )
- 
+
+        self.assertCountEqual(paths, expected)
+
+    def test_walk_graph_with_1_loop(self):
+        paths = walk(self.graph_with_loop, 'A')
+        expected = (
+            ('A', 'B', 'C', 'D', 'B'),
+            ('A', 'B', 'C', 'E', 'F', 'D', 'B'),
+            ('A', 'B', 'C', 'E', 'G'),
+        )
+
+        self.assertCountEqual(paths, expected)
+
+    def test_walk_graph_with_2_loop(self):
+        paths = walk(self.graph_with_loop, 'A', 2)
+        expected = (
+            ('A', 'B', 'C', 'D', 'B', 'C', 'D', 'B'),
+            ('A', 'B', 'C', 'D', 'B', 'C', 'E', 'F', 'D', 'B'),
+            ('A', 'B', 'C', 'E', 'F', 'D', 'B', 'C', 'D', 'B'),
+            ('A', 'B', 'C', 'E', 'F', 'D', 'B', 'C', 'E', 'F', 'D', 'B'),
+            ('A', 'B', 'C', 'E', 'G'),
+        )
+
         self.assertCountEqual(paths, expected)
 
 
