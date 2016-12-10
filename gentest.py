@@ -125,12 +125,14 @@ class MetaTestState(type):
     start_step = {}
 
     @staticmethod
-    def _build_test_method(input_method, names_and_methods):
+    def _build_test_method(input_method, names_and_methods, start):
         """
         Build and return test method for unittest.TestCase class.
         """
 
         def test(self):
+            if start is not None:
+                start(type(self))
             if input_method is not None:
                 input_method(self)
             for name, method in names_and_methods:
@@ -168,11 +170,10 @@ class MetaTestState(type):
                 return input_method
 
     @classmethod
-    def get_load_tests(mcs, max_loop=1):
+    def get_test_cases(mcs, max_loop):
         """
-        Build and return load_tests function.
+        Build and return unittest.TestCase subclasses.
         """
-
         test_case_list = []
         for senario_list in mcs._generate_senarios(max_loop):
             for senario in senario_list:
@@ -193,17 +194,24 @@ class MetaTestState(type):
                         step_num, step_name.split('.')[-1].lower())
 
                     attrs[method_name] = mcs._build_test_method(input_method,
-                                                                test_methods)
+                                                                test_methods,
+                                                                getattr(step, 'start', None))
 
                     previous_step_name = step_name
 
                 test_case_list.append(type(''.join(name.split('.')[-1]
                                       for name in senario),
                                       (unittest.TestCase,), attrs))
+        return test_case_list
 
+    @classmethod
+    def get_load_tests(mcs, max_loop=1):
+        """
+        Build and return load_tests function.
+        """
         def load_tests(loader, tests, pattern):
             suite = unittest.TestSuite()
-            for test in test_case_list:
+            for test in mcs.get_test_cases(max_loop):
                 suite.addTests(loader.loadTestsFromTestCase(test))
             return suite
 

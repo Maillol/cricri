@@ -3,13 +3,13 @@ from coin_operated_turnstile import Turnstile
 
 
 class Locked(TestState, previous=['Unlocked'], start=True):
+
+    def start(cls):
+        cls.machine = Turnstile()
+        cls.expect_coin = 0
+
     def input(self):
-        cls = type(self)
-        if not hasattr(cls, 'machine'):
-            cls.machine = Turnstile()
-            cls.expect_coin = 0
-        else:
-            cls.machine.push()
+        self.machine.push()
 
     def test_nb_coins(self):
         self.assertEqual(self.machine.coins, self.expect_coin)
