@@ -10,7 +10,10 @@ class TestTestStateSubClassing(unittest.TestCase):
     def setUp(self):
         type(self).mock.reset_mock()
 
-    class A(TestState, start=True):
+    class FooTestState(TestState):
+        spy_attr = 427
+
+    class A(FooTestState, start=True):
 
         def start(cls):
             TestTestStateSubClassing.mock(1)
@@ -24,7 +27,7 @@ class TestTestStateSubClassing(unittest.TestCase):
         def test_2(self):
             TestTestStateSubClassing.mock(4)
 
-    class B(TestState, previous=['A']):
+    class B(FooTestState, previous=['A']):
         def input(self):
             TestTestStateSubClassing.mock(5)
 
@@ -34,7 +37,7 @@ class TestTestStateSubClassing(unittest.TestCase):
         def test_2(self):
             TestTestStateSubClassing.mock(7)
 
-    class C(TestState, previous=['A', 'B']):
+    class C(FooTestState, previous=['A', 'B']):
 
         @previous(['A'])
         def input(self):
@@ -50,7 +53,7 @@ class TestTestStateSubClassing(unittest.TestCase):
         def test_2(self):
             TestTestStateSubClassing.mock(11)
 
-    test_cases = type(TestState).get_test_cases(1)
+    test_cases = FooTestState.get_test_cases(1)
     expected_abc_calls = [call(n) for n in (1, 2, 3, 4, 5, 6, 7, 9, 10, 11)]
     expected_ac_calls = [call(n) for n in (1, 2, 3, 4, 8, 10, 11)]
 
@@ -59,6 +62,12 @@ class TestTestStateSubClassing(unittest.TestCase):
         test_loader = unittest.TestLoader()
         suite = test_loader.loadTestsFromTestCase(test_case)
         suite.run(unittest.TestResult())
+
+    def test_generated_tests_are_footeststate(self):
+        """generated tests must be subclass of FooTestState"""
+        cls = type(self)
+        self.assertTrue(issubclass(cls.test_cases[0], type(self).FooTestState))
+        self.assertTrue(issubclass(cls.test_cases[1], type(self).FooTestState))
 
     def test_two_tests_are_generated(self):
         cls = type(self)

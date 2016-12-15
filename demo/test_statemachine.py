@@ -2,29 +2,41 @@ from gentest import TestState, previous
 from statemachine import Machine
 
 
-class A(TestState, start=True):
+class TestMachine(TestState):
+    """
+    Each subclass of this class will be a scenario step.
+    You can define utility methods here...
+    """
+    def assertX(self, value):
+        self.assertEqual(self.machine.x, value)
+
+    def assertY(self, value):
+        self.assertEqual(self.machine.y, value)
+
+
+class A(TestMachine, start=True):
     def input(self):
         type(self).machine = Machine()
 
     def test_x(self):
-        self.assertEqual(self.machine.x, 0)  
+        self.assertX(0)
 
     def test_y(self):
         self.assertEqual(self.machine.y, 0)
 
 
-class B(TestState, previous=['A']):
+class B(TestMachine, previous=['A']):
     def input(self):
         self.machine.mth1()
 
     def test_x(self):
-        self.assertEqual(self.machine.x, 0)  
+        self.assertX(0)
 
     def test_y(self):
-        self.assertEqual(self.machine.y, 1)
+        self.assertY(1)
 
 
-class C(TestState, previous=['A', 'B']):
+class C(TestMachine, previous=['A', 'B']):
 
     @previous(['A'])
     def input(self):
@@ -35,33 +47,34 @@ class C(TestState, previous=['A', 'B']):
         self.machine.mth1()
 
     def test_x(self):
-        self.assertEqual(self.machine.x, 0)  
+        self.assertX(0)
 
     def test_y(self):
-        self.assertEqual(self.machine.y, 2)
+        self.assertY(2)
 
-class D(TestState, previous=['B']):
+class D(TestMachine, previous=['B']):
     def input(self):
         self.machine.mth2()
 
     def test_x(self):
-        self.assertEqual(self.machine.x, 1)  
+        self.assertX(1)
 
     def test_y(self):
-        self.assertEqual(self.machine.y, 0)
+        self.assertY(0)
 
-class E(TestState, previous=['C']):
+
+class E(TestMachine, previous=['C']):
     def input(self):
         self.machine.mth1()
 
     def test_x(self):
-        self.assertEqual(self.machine.x, 1)  
+        self.assertX(1)
 
     def test_y(self):
-        self.assertEqual(self.machine.y, 1)
+        self.assertY(1)
 
 
-class F(TestState, previous=['C', 'D', 'E']):
+class F(TestMachine, previous=['C', 'D', 'E']):
 
     @previous(['D', 'E'])
     def input(self):
@@ -72,8 +85,11 @@ class F(TestState, previous=['C', 'D', 'E']):
         self.machine.mth2()
 
     def test_x(self):
-        self.assertEqual(self.machine.x, 1)  
+        self.assertX(1)
 
     def test_y(self):
-        self.assertEqual(self.machine.y, 2)
+        self.assertY(2)
+
+
+load_tests = TestMachine.get_load_tests()
 

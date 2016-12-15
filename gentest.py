@@ -39,17 +39,6 @@ class MultiDict(dict):
             self[new_key].append(value)
 
 
-class ByModuleDict(dict):
-
-    def __setitem__(self, key, value):
-        module_name = value.__module__
-        module = dict.__getitem__(self, module_name)
-        if module is None:
-            module = {}
-            dict.__setitem__(self, module_name, module)
-        module[value.__name__] = value
-
-
 def walk(graph, start, max_loop=1):
     """
     Find all path through graph.
@@ -105,13 +94,6 @@ def walk(graph, start, max_loop=1):
     return paths
 
 
-def fullname(cls):
-    """
-    Return dotted path from module to class.
-    """
-    return '{}.{}'.format(cls.__module__, cls.__name__)
-
-
 class MetaTestState(type):
     """
     Generate all possible test scenarios from TestState subclass.
@@ -121,7 +103,7 @@ class MetaTestState(type):
     unittest load_tests function.
     """
 
-    steps = {}
+    steps = defaultdict(dict)
     start_step = {}
 
     @staticmethod
@@ -141,18 +123,16 @@ class MetaTestState(type):
         return test
 
     @classmethod
-    def _generate_senarios(mcs, max_loop):
+    def _generate_senarios(mcs, subcls, max_loop):
         """
-        Return list of list of senario, each senario is a list of states.
-        list of senario is grouped by module.
+        Return list of senario, each senario is a list of states.
         """
         step_from_previous = defaultdict(list)
-        for step in mcs.steps.values():
+        for step in mcs.steps[subcls].values():
             for previous_step in step.previous:
-                step_from_previous[previous_step].append(fullname(step))
+                step_from_previous[previous_step].append(step.__name__)
 
-        return [walk(step_from_previous, start, max_loop)
-                for start in mcs.start_step.values()]
+        return walk(step_from_previous, mcs.start_step[subcls], max_loop)
 
     @staticmethod
     def _select_input_method(inputs, previous_step):
@@ -169,49 +149,47 @@ class MetaTestState(type):
             if previous_step in input_method.previous_steps:
                 return input_method
 
-    @classmethod
-    def get_test_cases(mcs, max_loop):
+    def get_test_cases(cls, max_loop):
         """
         Build and return unittest.TestCase subclasses.
         """
+        mcs = type(cls)
         test_case_list = []
-        for senario_list in mcs._generate_senarios(max_loop):
-            for senario in senario_list:
-                attrs = {}
-                previous_step_name = None
-                for step_num, step_name in enumerate(senario):
-                    step = mcs.steps[step_name]
-                    input_method = mcs._select_input_method(step.inputs,
-                                                            previous_step_name)
+        for senario in mcs._generate_senarios(cls, max_loop):
+            attrs = {}
+            previous_step_name = None
+            for step_num, step_name in enumerate(senario):
+                step = mcs.steps[cls][step_name]
+                input_method = mcs._select_input_method(step.inputs,
+                                                        previous_step_name)
 
-                    test_methods = tuple(
-                        sorted((name, attr)
-                               for name, attr
-                               in vars(step).items()
-                               if name.startswith('test')))
+                test_methods = tuple(
+                    sorted((name, attr)
+                           for name, attr
+                           in vars(step).items()
+                           if name.startswith('test')))
 
-                    method_name = "test_{:>04}_{}".format(
-                        step_num, step_name.split('.')[-1].lower())
+                method_name = "test_{:>04}_{}".format(
+                    step_num, step_name.split('.')[-1].lower())
 
-                    attrs[method_name] = mcs._build_test_method(input_method,
-                                                                test_methods,
-                                                                getattr(step, 'start', None))
+                attrs[method_name] = mcs._build_test_method(input_method,
+                                                            test_methods,
+                                                            getattr(step, 'start', None))
 
-                    previous_step_name = step_name
+                previous_step_name = step_name
 
-                test_case_list.append(type(''.join(name.split('.')[-1]
-                                      for name in senario),
-                                      (unittest.TestCase,), attrs))
+            test_case_list.append(type(''.join(senario),
+                                       (unittest.TestCase,) + step.__bases__,
+                                       attrs))
         return test_case_list
 
-    @classmethod
-    def get_load_tests(mcs, max_loop=1):
+    def get_load_tests(cls, max_loop=1):
         """
         Build and return load_tests function.
         """
         def load_tests(loader, tests, pattern):
             suite = unittest.TestSuite()
-            for test in mcs.get_test_cases(max_loop):
+            for test in cls.get_test_cases(max_loop):
                 suite.addTests(loader.loadTestsFromTestCase(test))
             return suite
 
@@ -226,27 +204,25 @@ class MetaTestState(type):
             if previous is None:
                 cls.previous = []
             else:
-                cls.previous = ['{}.{}'.format(cls.__module__, prev)
-                                for prev in previous]
+                cls.previous = previous
 
             for attr_name, attr in attrs.items():
                 if attr_name == 'inputs':
                     for input_method in attr:
                         if not hasattr(input_method, 'previous_steps'):
                             input_method.previous_steps = cls.previous
-                        else:
-                            input_method.previous_steps = [
-                                '{}.{}'.format(cls.__module__, prev)
-                                for prev in input_method.previous_steps]
 
-            mcs.steps[fullname(cls)] = cls
+            base = next(base for base in bases
+                        if issubclass(base, TestState))
+
+            mcs.steps[base][cls_name] = cls
             if start:
-                if cls.__module__ in mcs.start_step:
+                if base in mcs.start_step:
                     raise AssertionError("States '{}' and '{}' are start states. "
                                          "Only one start state is allowed."
-                                         .format(mcs.start_step[cls.__module__], cls_name))
+                                         .format(mcs.start_step[base], cls_name))
 
-                mcs.start_step[cls.__module__] = fullname(cls)
+                mcs.start_step[base] = cls_name
 
         return cls
 
