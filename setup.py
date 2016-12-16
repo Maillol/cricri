@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='gentest',
-    version='0.1',
+    version='0.2',
     description='Scenario test generator',
     keywords='scenario test generator unittest case',
     author='Vincent Maillol',
