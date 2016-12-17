@@ -1,9 +1,14 @@
 gentest - Generate test scenarios using unittest
 ================================================
 
+.. image:: https://badge.fury.io/py/gentest.svg
+    :target: https://badge.fury.io/py/gentest
+
+.. image:: https://api.travis-ci.org/Maillol/scenario.svg?branch=master
+    :target: https://travis-ci.org/Maillol/scenario
+
 Determine and write all possible test scenarios of finite state machines is a hard task.
 **gentest** generates test scenarios from state specification.
-
 
 What are gentest prerequisites ?
 --------------------------------
