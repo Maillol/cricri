@@ -4,4 +4,4 @@ python:
   - "3.5"
   - "3.6-dev"
 
-script: python -m unittest test_gentest
+script: python -m unittest

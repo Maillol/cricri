@@ -107,9 +107,11 @@ class MetaTestState(type):
     start_step = {}
 
     @staticmethod
-    def _build_test_method(input_method, names_and_methods, start):
+    def _build_test_method(input_method, names_and_methods, start, previous_steps):
         """
         Build and return test method for unittest.TestCase class.
+
+            previous_steps - list of previous step executed.
         """
 
         def test(self):
@@ -118,6 +120,10 @@ class MetaTestState(type):
             if input_method is not None:
                 input_method(self)
             for name, method in names_and_methods:
+                if (hasattr(method, 'previous_steps') and
+                    previous_steps[-1] not in method.previous_steps):
+                        continue
+
                 with self.subTest(name=name):
                     method(self)
         return test
@@ -158,6 +164,7 @@ class MetaTestState(type):
         for senario in mcs._generate_senarios(cls, max_loop):
             attrs = {}
             previous_step_name = None
+            previous_steps_names = []
             for step_num, step_name in enumerate(senario):
                 step = mcs.steps[cls][step_name]
                 input_method = mcs._select_input_method(step.inputs,
@@ -174,9 +181,11 @@ class MetaTestState(type):
 
                 attrs[method_name] = mcs._build_test_method(input_method,
                                                             test_methods,
-                                                            getattr(step, 'start', None))
+                                                            getattr(step, 'start', None),
+                                                            tuple(previous_steps_names))
 
                 previous_step_name = step_name
+                previous_steps_names.append(step_name)
 
             test_case_list.append(type(''.join(senario),
                                        (unittest.TestCase,) + step.__bases__,
@@ -234,6 +243,7 @@ class MetaTestState(type):
 def previous(previous_steps):
     """
     This decorator define previous steps of decorated input methods.
+    You can use previous to decorate a test method.
 
     previous_steps - list of previous TestState subclasses names.
     """
