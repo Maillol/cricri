@@ -1,8 +1,7 @@
 import unittest
 import unittest.mock
 from unittest.mock import call
-from gentest import previous, TestState
-from functools import wraps
+from gentest import previous, TestState, condition, Path
 
 
 spy = unittest.mock.Mock()
@@ -158,4 +157,40 @@ class TestPreviousOnInputMethod(SpyTestState):
                          "C.input /A",
                          "C.test_1",
                          "C.test_2"))
+
+
+class TestPathCondition(SpyTestState):
+
+    class BaseTestState(TestState):
+        ...
+
+    class A(BaseTestState, start=True):
+        def test_1(self):
+            spy('A.test_1')
+
+    class B(BaseTestState, previous=['A']):
+        def test_1(self):
+            spy('B.test_1')
+
+    class C(BaseTestState, previous=['B', 'A']):
+        def test_1(self):
+            spy('C.test_1')
+
+    class D(BaseTestState, previous=['C']):
+
+        @condition(Path("A", "C"))
+        def test_1(self):
+            spy('D.test_1 /AC')
+
+        @condition(- Path("A", "C"))
+        def test_2(self):
+            spy('D.test_2 /-AC')
+
+    def test_execute_abc(self):
+        self.assertExec('ABCD',
+                        ("A.test_1", "B.test_1", "C.test_1", "D.test_2 /-AC"))
+
+    def test_execute_acd(self):
+        self.assertExec('ACD',
+                        ("A.test_1", "C.test_1", "D.test_1 /AC"))
 
