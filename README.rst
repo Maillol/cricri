@@ -7,6 +7,10 @@ gentest - Generate test scenarios using unittest
 .. image:: https://api.travis-ci.org/Maillol/scenario.svg?branch=master
     :target: https://travis-ci.org/Maillol/scenario
 
+.. image:: https://readthedocs.org/projects/gentest/badge/?version=latest
+    :target: http://gentest.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
 Determine and write all possible test scenarios of finite state machines is a hard task.
 **gentest** generates test scenarios from state specification.
 
@@ -108,4 +112,10 @@ and:
     |  test_c()
 
 For more example, see `demo directory <https://github.com/Maillol/scenario/tree/master/demo>`_
+
+
+Documentation:
+--------------
+
+Documentation is online at http://gentest.readthedocs.io
 
