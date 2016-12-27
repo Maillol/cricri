@@ -18,7 +18,10 @@ import os
 import shlex
 from os.path import dirname, abspath
 sys.path.insert(0, dirname(abspath('.')))
-from gentest import __version__
+
+# FIXME crash because read the docs import gentest using python 2.7 
+#from gentest import __version__
+__version__ = '1.0b1'
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
