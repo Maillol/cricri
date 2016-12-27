@@ -1,9 +1,20 @@
 from setuptools import setup
+import sys
+sys.path.insert(0, '.')
+from gentest import __version__
+
+
+if 'a' in __version__:
+    development_status = 'Development Status :: 3 - Alpha'
+elif 'b' in __version__:
+    development_status = 'Development Status :: 4 - Beta'
+else:
+    development_status = 'Development Status :: 5 - Production/Stable'
 
 
 setup(
     name='gentest',
-    version='0.2',
+    version=__version__,
     description='Scenario test generator',
     keywords='scenario test generator unittest case',
     author='Vincent Maillol',

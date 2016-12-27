@@ -6,6 +6,9 @@ from collections import defaultdict
 import unittest
 
 
+__version__ = '1.0b1'
+
+
 class MultiDict(dict):
     """
     MultiDict(multi_values_mapping[, ...]) --> dict with multiple values per key.
