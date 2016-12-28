@@ -16,12 +16,11 @@
 import sys
 import os
 import shlex
+import re
 from os.path import dirname, abspath
 sys.path.insert(0, dirname(abspath('.')))
 
-# FIXME crash because read the docs import gentest using python 2.7 
-#from gentest import __version__
-__version__ = '1.0b1'
+from gentest import __version__
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -64,11 +63,8 @@ author = 'Vincent Maillol'
 # built documents.
 #
 # The short X.Y version.
-if len(__version__.split('.')) == 2:
-    version = __version__
-else:
-    version = __version__.rsplit('.', 1)[0]
-
+x, y = re.match("(\d+)\.(\d+)(?:[.ab]\d+)?", __version__).groups()
+version = "{}.{}".format(x, y)
 # The full version, including alpha/beta/rc tags.
 release = __version__
 
