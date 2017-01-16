@@ -3,12 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Gentest's documentation 
+Welcome to Gentest's documentation
 ==================================
 
-Gentest is a test scenario generator. You define steps using TestState class. 
+Gentest is a test scenario generator. You define steps using TestState class.
 Each step has input method, set of tests methods, and one or multiple previous steps.
-Gentest finds all paths in the steps and generates one Test Case for each 
+Gentest finds all paths in the steps and generates one Test Case for each
 path. You can disable test steps depending on the path traveled.
 
 
@@ -35,17 +35,17 @@ Here is a simple example with three steps to generate two scenario wich test lis
 
 
     class BaseTestState(TestState):
-        ...
 
+        @classmethod
+        def start_scenario(cls):
+            cls.l = [1, 3, 2, 4]
 
     class Create(BaseTestState, start=True):
-        def start(cls):
-            cls.l = [1, 3, 2, 4]
 
         def test_1(self):
             self.assertEqual(self.l, [1, 3, 2, 4])
 
-            
+
     class Reverse(BaseTestState, previous=['Create']):
         def input(self):
             self.l.reverse()
@@ -65,25 +65,40 @@ Here is a simple example with three steps to generate two scenario wich test lis
     load_tests = BaseTestState.get_load_tests()
 
 
-A step is created by subclassing gentest.TestState.
+The *BaseTestState* is created by subclassing *gentest.TestState*.
+This subclass defines *start_scenario* method in order to store the object
+to be tested in a class attribute.
+The *start_scenario* method will be called once at the beginning of each generated scenario.
 
-start attribute allow you to define the first step. Here Create is the first step.
-The first step can define start methode in order to store the object to be tested in a class attribute.
-start method is called once at the beginning of scenario.
-previous attribute allow you to define when step is executed. Here Reverse step is executed when Create
-step is done and Sort step can be executed when Create or Reverse step is done.
+Each *BaseTestState* subclass defines a scenario step.
+*start attribute* allow you to define the first step. Here *Create* class is the first step.
+*previous attribute* allow you to define when step is executed. Here *Reverse* step is executed
+when *Create* step is done and *Sort* step can be executed when *Create* or *Reverse* step is done.
 
 This three steps define two scenario:
     - Create, Reverse and Sort list.
     - Create and Sort list.
- 
+
 Each step has input method. This method is called before test methods of step.
 
 The last statement allows unittest to manage this module. It generate all unittest.TestCase classes.
 
 To run this script, use unittest command-line interface::
 
-    python3 -m unittest test_module_name  
+    $ python3 -m unittest -v test_scenario_list
+
+You will see the following output::
+
+    test_0000_create (gentest.CreateReverseSort) ... ok
+    test_0001_reverse (gentest.CreateReverseSort) ... ok
+    test_0002_sort (gentest.CreateReverseSort) ... ok
+    test_0000_create (gentest.CreateSort) ... ok
+    test_0001_sort (gentest.CreateSort) ... ok
+
+    ----------------------------------------------------------------------
+    Ran 5 tests in 0.001s
+
+    OK
 
 
 previous decorator
@@ -100,7 +115,7 @@ this function takes a list of steps names::
         ...
 
     class C(BaseTestState, previous=['B1', 'B2']):
-        
+
         @previous(['B1'])  # Called when previous step is B1
         def input(self):
             ...
@@ -118,7 +133,7 @@ this function takes a list of steps names::
             ...
 
 
-Note that TestState subsubclass can have severals input method if previous decorator is used. 
+Note that TestState subsubclass can have severals input method if previous decorator is used.
 
 
 condition decorator
@@ -156,7 +171,7 @@ Condition object
 
 The Conditions objets are used in condition decorator.
 
-You can combine Condition objects using operator. 
+You can combine Condition objects using operator.
 
 +------------+------------+----------------------------------+
 | Operator   | Meaning    | Example                          |
@@ -174,7 +189,7 @@ Built-in Condition
 Path
 ~~~~
 
-Path(step [,step2 [...]]) is enable if the given contigious steps have executed. 
+Path(step [,step2 [...]]) is enable if the given contigious steps have executed.
 
 Example:
 
@@ -220,9 +235,9 @@ Example:
 How to create a custom Condition
 --------------------------------
 
-You can create a custom Condition by inheriting from Condition class and overriding the \_\_call__ method. 
+You can create a custom Condition by inheriting from Condition class and overriding the \_\_call__ method.
 The \_\_call__ method takes *previous_steps* parameter - *previous_steps* parameters is a list of executed step names -
-and return True if decorated method must be executed else False. 
+and return True if decorated method must be executed else False.
 
 Here is a Condition wich is enable when step appears a given number of times::
 

@@ -81,12 +81,11 @@ class TestPreviousOnTestMethod(SpyTestState):
 class TestPreviousOnInputMethod(SpyTestState):
 
     class BaseTestState(TestState):
-        spy_attr = 427
+        @classmethod
+        def start_scenario(cls):
+            spy("A.start")
 
     class A(BaseTestState, start=True):
-
-        def start(cls):
-            spy("A.start")
 
         def input(self):
             spy("A.input")
@@ -193,4 +192,34 @@ class TestPathCondition(SpyTestState):
     def test_execute_acd(self):
         self.assertExec('ACD',
                         ("A.test_1", "C.test_1", "D.test_1 /AC"))
+
+
+class TestStartStopMethods(SpyTestState):
+
+    class BaseTestState(TestState):
+
+        @classmethod
+        def start_scenario(cls):
+            cls.attr = 'ok'
+            spy('A.start')
+
+        @classmethod
+        def stop_scenario(cls):
+            spy('A.stop')
+
+
+    class A(BaseTestState, start=True, previous=['B']):
+        def test_1(self):
+            attr = getattr(self, 'attr',
+                           'should get attr defined from start_scenario')
+            spy('A.test_1 {}'.format(attr))
+
+    class B(BaseTestState, previous=['A']):
+        def test_1(self):
+            spy('B.test_1')
+
+    def test_execute_abab(self):
+        self.assertExec('ABA',
+                        ("A.start", "A.test_1 ok",
+                         "B.test_1", "A.test_1 ok", "A.stop"))
 

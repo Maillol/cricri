@@ -2,14 +2,13 @@ from gentest import TestState, previous
 from coin_operated_turnstile import Turnstile
 
 class TestTurnstile(TestState):
-    pass
 
-
-class Locked(TestTurnstile, previous=['Unlocked'], start=True):
-
-    def start(cls):
+    @classmethod
+    def start_scenario(cls):
         cls.machine = Turnstile()
         cls.expect_coin = 0
+
+class Locked(TestTurnstile, previous=['Unlocked'], start=True):
 
     def input(self):
         self.machine.push()

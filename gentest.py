@@ -3,6 +3,7 @@ Module to generate test scenarios from scenario step.
 """
 
 from collections import defaultdict
+import types
 import unittest
 
 
@@ -110,7 +111,7 @@ class MetaTestState(type):
     start_step = {}
 
     @staticmethod
-    def _build_test_method(input_method, names_and_methods, start, previous_steps):
+    def _build_test_method(input_method, names_and_methods, previous_steps):
         """
         Build and return test method for unittest.TestCase class.
 
@@ -119,11 +120,8 @@ class MetaTestState(type):
 
         def test(self):
             """
-            Execute start if exists, input if exists and test methods.
+            Execute input if exists, test methods
             """
-
-            if start is not None:
-                start(type(self))
             if input_method is not None:
                 input_method(self)
             for name, method in names_and_methods:
@@ -135,19 +133,27 @@ class MetaTestState(type):
                 if func_condition(previous_steps):
                     with self.subTest(name=name):
                         method(self)
+
         return test
 
     @classmethod
-    def _generate_senarios(mcs, subcls, max_loop):
+    def _generate_scenarios(mcs, subcls, max_loop):
         """
-        Return list of senario, each senario is a list of states.
+        Return list of scenario, each scenario is a list of states.
         """
+        try:
+            start_step = mcs.start_step[subcls]
+        except KeyError:
+            raise ValueError("You must set 'start' attribut to "
+                             "define the first '{}' subclass."
+                             .format(subcls.__qualname__))
+
         step_from_previous = defaultdict(list)
         for step in mcs.steps[subcls].values():
             for previous_step in step.previous:
                 step_from_previous[previous_step].append(step.__name__)
 
-        return walk(step_from_previous, mcs.start_step[subcls], max_loop)
+        return walk(step_from_previous, start_step, max_loop)
 
     @staticmethod
     def _select_input_method(inputs, previous_step):
@@ -170,11 +176,12 @@ class MetaTestState(type):
         """
         mcs = type(cls)
         test_case_list = []
-        for senario in mcs._generate_senarios(cls, max_loop):
+
+        for scenario in mcs._generate_scenarios(cls, max_loop):
             attrs = {}
             previous_step_name = None
             previous_steps_names = []
-            for step_num, step_name in enumerate(senario):
+            for step_num, step_name in enumerate(scenario):
                 step = mcs.steps[cls][step_name]
                 input_method = mcs._select_input_method(step.inputs,
                                                         previous_step_name)
@@ -190,13 +197,31 @@ class MetaTestState(type):
 
                 attrs[method_name] = mcs._build_test_method(input_method,
                                                             test_methods,
-                                                            getattr(step, 'start', None),
                                                             tuple(previous_steps_names))
 
                 previous_step_name = step_name
                 previous_steps_names.append(step_name)
 
-            test_case_list.append(type(''.join(senario),
+            previous_step_name = step_name
+            previous_steps_names.append(step_name)
+
+            start_scenario = getattr(cls, 'start_scenario', None)
+            if start_scenario is not None:
+                if not isinstance(start_scenario, types.MethodType):
+                    raise TypeError("{}.start_scenario must be a classmethod"
+                                    .format(cls))
+
+                attrs['setUpClass'] = start_scenario
+
+            stop_scenario = getattr(cls, 'stop_scenario', None)
+            if stop_scenario is not None:
+                if not isinstance(start_scenario, types.MethodType):
+                    raise TypeError("{}.stop_scenario must be a classmethod"
+                                    .format(cls))
+
+                attrs['tearDownClass'] = stop_scenario
+
+            test_case_list.append(type(''.join(scenario),
                                        (unittest.TestCase,) + step.__bases__,
                                        attrs))
         return test_case_list
@@ -261,6 +286,9 @@ def previous(previous_steps):
                         .format(type(previous_steps).__name__))
 
     def decorator(func):
+        """
+        Add previous_steps attribut to func
+        """
         func.previous_steps = previous_steps
         return func
 
