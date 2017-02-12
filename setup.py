@@ -1,8 +1,15 @@
 from setuptools import setup
 import sys
+import os
 sys.path.insert(0, '.')
 from gentest import __version__
 
+path_to_requirements = os.path.join(os.path.dirname(__file__), 'requirements.txt')
+with open(path_to_requirements, 'r') as requirements_file:
+    required = requirements_file.read().splitlines()
+
+
+print(required)
 
 if 'a' in __version__:
     development_status = 'Development Status :: 3 - Alpha'
@@ -30,5 +37,6 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Topic :: Software Development :: Testing',
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)'
-    ]
+    ],
+    install_requires=required
 )
