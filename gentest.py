@@ -3,8 +3,13 @@ Module to generate test scenarios from scenario step.
 """
 
 from collections import defaultdict
+import socket
+from subprocess import Popen
+import time
 import types
 import unittest
+
+from voluptuous import ALLOW_EXTRA, All, Any, Invalid, Match, Optional, Range, Required, Schema
 
 
 __version__ = '1.0b1'
@@ -256,7 +261,7 @@ class MetaTestState(type):
                             input_method.previous_steps = cls.previous
 
             base = next(base for base in bases
-                        if issubclass(base, TestState))
+                        if isinstance(base, mcs))
 
             mcs.steps[base][cls_name] = cls
             if start:
@@ -340,6 +345,185 @@ class TestState(metaclass=MetaTestState):
                 type(self).machine.m1()
 
     """
+
+class MetaServerTestState(MetaTestState):
+
+    _port_def = Any(Match(r"\{.+\}$",
+                          "int or string starts with '{' and ends with '}'"),
+                    int)
+
+    valid_attributes = Schema(
+        {
+            Required("tcp_clients", 'required class attribute'): [
+                {
+                    Required("name"): str,
+                    Required("port"): _port_def,
+                    Optional("timeout", default=2): Range(0, min_included=False),
+                    Optional("tries", default=3): All(int, Range(0, min_included=False)),
+                    Optional("wait", default=0.125): Range(0, min_included=False)
+                }
+            ],
+            Required("commands", 'required class attribute'): [
+                {
+                    Required("name"): str,
+                    Required("cmd"): [str],
+                }
+            ]
+        },
+        extra=ALLOW_EXTRA
+    )
+
+    def __new__(mcs, cls_name, bases, attrs, previous=None, start=False):
+
+        if bases and TestServer in bases:
+            try:
+                attrs = mcs.valid_attributes(attrs)
+            except Invalid as error:
+                msg = "{} @ {}.{}".format(error.error_message,
+                                          cls_name, error.path[0])
+                msg += ''.join('[{!r}]'.format(element)
+                               for element in error.path[1:])
+
+                raise AttributeError(msg)
+
+        return super().__new__(mcs, cls_name, bases, attrs,
+                               previous, start)
+
+
+class TestServer(metaclass=MetaServerTestState):
+    """
+    TestServer subclasses must define *tcp_clients* and
+    *commands* attributes
+ 
+    tcp_clients must be a list containing dict with *name* and *port* keys.
+    The *port* must be an integer you can use a string surrounded by curly 
+    brackets and the OS will then pick a free port. The *timeout*, *tries* and 
+    *wait* keys are optional and allow you to manage TCP connection.
+
+    The *commands* must be a list containing dict with *name* and *cmd* keys.
+    cmd is list of sequence of program arguments the first element is a program.
+
+    Example::
+
+        class MyTestServer(TestServer):
+
+            tcp_clients = [
+                {
+                    "name": "Alice",
+                    "port": "{port-1}",
+                },
+                {
+                    "name": "Bob",
+                    "port": "{port-1}",
+                }
+            ]
+
+            commands = [
+                {
+                    "name": "launch_server",
+                    "cmd": ["python3", "server.py", "{port-1}"],
+                }
+            ]
+    """
+
+    tcp_clients = []
+    commands = []
+
+    class _Client:
+        def __init__(self, port, timeout, tries, wait):
+            self.socket = socket.socket(socket.AF_INET,
+                                        socket.SOCK_STREAM)
+
+            self.socket.settimeout(timeout)
+
+            socket_error = None
+            for _ in range(tries):
+                start = time.time()
+                try:
+                    self.socket.connect(("127.0.0.1", int(port)))
+                except socket.timeout as error:
+                    socket_error = error
+                except OSError as error:
+                    socket_error = error
+                    if wait is None:
+                        time.sleep(timeout - (time.time() - start))
+                    else:
+                        time.sleep(wait)
+                else:
+                    socket_error = None
+                    break
+
+            if socket_error is not None:
+                print(str(socket_error))
+
+        def close(self):
+            self.socket.close()
+
+        def send(self, msg):
+            self.socket.send(msg.encode('utf-8'))
+
+        def assertReceive(self, expected, timeout=2):
+            self.socket.settimeout(timeout)
+            try:
+                msg = self.socket.recv(256)
+            except socket.timeout:
+                raise AssertionError("Timeout: No data received")
+
+            if msg.decode('utf-8') != expected:
+                raise AssertionError('{} != {}'
+                                     .format(msg.decode('utf-8'),
+                                             expected))
+
+    virtual_ports = {}
+    clients = {}
+    servers = {}
+
+    @staticmethod
+    def get_free_tcp_port():
+        tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        tcp.bind(('', 0))
+        port = tcp.getsockname()[1]
+        tcp.close()
+        return port
+
+    @classmethod
+    def start_scenario(cls):
+        for command in cls.commands:
+            parameters = []
+            for parameter in command['cmd']:
+                if parameter.startswith('{') and parameter.endswith('}'):
+                    port = cls.virtual_ports.get(parameter)
+                    if port is None:
+                        port = cls.get_free_tcp_port()
+                        cls.virtual_ports[parameter] = port
+                    parameters.append(str(port))
+                else:
+                    parameters.append(parameter)
+
+            cls.servers[command['name']] = Popen(parameters)
+
+        for tcp_client in cls.tcp_clients:
+            port = tcp_client['port']
+            if port.startswith('{') and port.endswith('}'):
+                port = cls.virtual_ports[port]
+
+            client = cls._Client(port,
+                                 tcp_client['timeout'],
+                                 tcp_client['tries'],
+                                 tcp_client['wait'])
+
+            cls.clients[tcp_client['name']] = client
+
+    @classmethod
+    def stop_scenario(cls):
+        for client in cls.clients.values():
+            client.close()
+        for server in cls.servers.values():
+            server.kill()
+
+        cls.virtual_ports.clear()
+        cls.clients.clear()
+        cls.servers.clear()
 
 
 class Condition:
