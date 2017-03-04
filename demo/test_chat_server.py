@@ -18,34 +18,37 @@ class TestChatServer(TestServer):
     ]
     commands = [
         {
-            "name": "launch_server",
-            "cmd": ["python3", "chat_server.py", "{port-1}"],
+            "name": "chat-server",
+            "cmd": ["python3", "-u", "chat_server.py", "{port-1}"],
         }
     ]
 
 
-ALICE_IS_CONNECTED = Newer('AliceSaidBye', 'AliceAskedNickname')
-ALICE_IS_NOT_CONNECTED = -ALICE_IS_CONNECTED
-BOB_IS_CONNECTED = Newer('BobSaidBye', 'BobAskedNickname')
-BOB_IS_NOT_CONNECTED = -BOB_IS_CONNECTED
+ALICE_HAS_NICKNAME = Newer('AliceSaidBye', 'AliceAskedNickname')
+ALICE_HAS_NO_NICKNAME = -ALICE_HAS_NICKNAME
+BOB_HAS_NICKNAME = Newer('BobSaidBye', 'BobAskedNickname')
+BOB_HAS_NO_NICKNAME = -BOB_HAS_NICKNAME
 
 
 class Start(TestChatServer, start=True):
-    pass
 
+    def test_server_listen(self):
+        self.servers['chat-server'].assert_stdout_regex(
+            'server listen on port \d+', timeout=2
+        )
 
 class AliceAskedNickname(TestChatServer, previous=["Start", "AliceAskedNickname", "BobAskedNickname"]):
 
     def input(self):
         self.clients["Alice"].send("MY_NAME_IS;Alice;")
 
-    @condition(ALICE_IS_CONNECTED)
+    @condition(ALICE_HAS_NICKNAME)
     def test_alice_should_receive_error_if_she_is_already_a_nickname(self):
-        self.clients["Alice"].assertReceive('ERROR: I know you')
+        self.clients["Alice"].assert_receive('ERROR: I know you')
 
-    @condition(ALICE_IS_NOT_CONNECTED)
+    @condition(ALICE_HAS_NO_NICKNAME)
     def test_alice_should_receive_ok(self):
-        self.clients["Alice"].assertReceive('OK')
+        self.clients["Alice"].assert_receive('OK')
 
 
 class BobAskedNickname(TestChatServer, previous=["Start", "AliceAskedNickname", "BobAskedNickname"]):
@@ -53,13 +56,13 @@ class BobAskedNickname(TestChatServer, previous=["Start", "AliceAskedNickname", 
     def input(self):
         self.clients["Bob"].send("MY_NAME_IS;Bob;")
 
-    @condition(BOB_IS_CONNECTED)
+    @condition(BOB_HAS_NICKNAME)
     def test_bob_should_receive_error_if_he_is_already_a_nickname(self):
-        self.clients["Bob"].assertReceive('ERROR: I know you')
+        self.clients["Bob"].assert_receive('ERROR: I know you')
 
-    @condition(BOB_IS_NOT_CONNECTED)
+    @condition(BOB_HAS_NO_NICKNAME)
     def test_bob_should_receive_ok(self):
-        self.clients["Bob"].assertReceive('OK')
+        self.clients["Bob"].assert_receive('OK')
 
 
 class BobPlagiarizerAskedNickname(TestChatServer, previous=["BobAskedNickname"]):
@@ -68,7 +71,7 @@ class BobPlagiarizerAskedNickname(TestChatServer, previous=["BobAskedNickname"])
         self.clients["Bob-plagiarizer"].send("MY_NAME_IS;Bob;")
 
     def test_bob_plagiarizer_should_receive_error(self):
-        self.clients["Bob-plagiarizer"].assertReceive('ERROR: nickname is already used')
+        self.clients["Bob-plagiarizer"].assert_receive('ERROR: nickname is already used')
 
 
 class BobSentMessage(TestChatServer, previous=["Start", "BobAskedNickname", "BobSaidBye",
@@ -77,17 +80,17 @@ class BobSentMessage(TestChatServer, previous=["Start", "BobAskedNickname", "Bob
     def input(self):
         self.clients["Bob"].send("SEND_TO;Alice;Hello")
 
-    @condition(BOB_IS_CONNECTED & ALICE_IS_CONNECTED)
+    @condition(BOB_HAS_NICKNAME & ALICE_HAS_NICKNAME)
     def test_alice_shoult_receive_message(self):
-        self.clients["Alice"].assertReceive('Hello')
+        self.clients["Alice"].assert_receive('Hello')
 
-    @condition(BOB_IS_CONNECTED & ALICE_IS_NOT_CONNECTED)
-    def test_bob_should_receive_error_if_alice_is_not_connected(self):
-        self.clients["Bob"].assertReceive('ERROR: recipient is not connected')
+    @condition(BOB_HAS_NICKNAME & ALICE_HAS_NO_NICKNAME)
+    def test_bob_should_receive_error_if_ALICE_HAS_NO_NICKNAME(self):
+        self.clients["Bob"].assert_receive('ERROR: recipient is not connected')
 
-    @condition(BOB_IS_NOT_CONNECTED)
+    @condition(BOB_HAS_NO_NICKNAME)
     def test_bob_should_receive_error_if_is_not_connected(self):
-        self.clients["Bob"].assertReceive("ERROR: I don't know you")
+        self.clients["Bob"].assert_receive("ERROR: I don't know you")
 
 
 class AliceSentMessage(TestChatServer, previous=["Start", "BobAskedNickname", "BobSaidBye",
@@ -97,17 +100,17 @@ class AliceSentMessage(TestChatServer, previous=["Start", "BobAskedNickname", "B
     def input(self):
         self.clients["Alice"].send("SEND_TO;Bob;Hi")
 
-    @condition(ALICE_IS_CONNECTED & BOB_IS_CONNECTED)
+    @condition(ALICE_HAS_NICKNAME & BOB_HAS_NICKNAME)
     def test_bob_shoult_receive_message(self):
-        self.clients["Bob"].assertReceive('Hi')
+        self.clients["Bob"].assert_receive('Hi')
 
-    @condition(ALICE_IS_CONNECTED & BOB_IS_NOT_CONNECTED)
-    def test_alice_should_receive_error_if_bob_is_not_connected(self):
-        self.clients["Alice"].assertReceive('ERROR: recipient is not connected')
+    @condition(ALICE_HAS_NICKNAME & BOB_HAS_NO_NICKNAME)
+    def test_alice_should_receive_error_if_BOB_HAS_NO_NICKNAME(self):
+        self.clients["Alice"].assert_receive('ERROR: recipient is not connected')
 
-    @condition(ALICE_IS_NOT_CONNECTED)
+    @condition(ALICE_HAS_NO_NICKNAME)
     def test_alice_should_receive_error_if_is_not_connected(self):
-        self.clients["Alice"].assertReceive("ERROR: I don't know you")
+        self.clients["Alice"].assert_receive("ERROR: I don't know you")
 
 
 class AliceSaidBye(TestChatServer, previous=["Start", "AliceAskedNickname", 
@@ -116,13 +119,13 @@ class AliceSaidBye(TestChatServer, previous=["Start", "AliceAskedNickname",
     def input(self):
         self.clients["Alice"].send("BYE;;")
 
-    @condition(ALICE_IS_NOT_CONNECTED)
+    @condition(ALICE_HAS_NO_NICKNAME)
     def test_alice_shoult_receive_error_if_she_does_not_have_a_nickname(self):
-        self.clients["Alice"].assertReceive("ERROR: I don't know you")
+        self.clients["Alice"].assert_receive("ERROR: I don't know you")
 
-    @condition(ALICE_IS_CONNECTED)
+    @condition(ALICE_HAS_NICKNAME)
     def test_alice_shoult_receive_ok(self):
-        self.clients["Alice"].assertReceive('BYE')
+        self.clients["Alice"].assert_receive('BYE')
 
 
 class BobSaidBye(TestChatServer, previous=["Start", "BobAskedNickname", 
@@ -131,13 +134,13 @@ class BobSaidBye(TestChatServer, previous=["Start", "BobAskedNickname",
     def input(self):
         self.clients["Bob"].send("BYE;;")
 
-    @condition(BOB_IS_NOT_CONNECTED)
+    @condition(BOB_HAS_NO_NICKNAME)
     def test_bob_shoult_receive_error_if_he_does_not_have_a_nickname(self):
-        self.clients["Bob"].assertReceive("ERROR: I don't know you")
+        self.clients["Bob"].assert_receive("ERROR: I don't know you")
 
-    @condition(BOB_IS_CONNECTED)
+    @condition(BOB_HAS_NICKNAME)
     def test_a_ok(self):
-        self.clients["Bob"].assertReceive('BYE')
+        self.clients["Bob"].assert_receive('BYE')
 
 
 load_tests = TestChatServer.get_load_tests()

@@ -4,10 +4,13 @@ Module to generate test scenarios from scenario step.
 
 from collections import defaultdict
 import socket
-from subprocess import Popen
+from subprocess import Popen, PIPE
 import time
 import types
 import unittest
+import operator
+import re
+import selectors
 
 from voluptuous import ALLOW_EXTRA, All, Any, Invalid, Match, Optional, Range, Required, Schema
 
@@ -347,6 +350,9 @@ class TestState(metaclass=MetaTestState):
     """
 
 class MetaServerTestState(MetaTestState):
+    """
+    MetaTestState designed to test tcp server.
+    """
 
     _port_def = Any(Match(r"\{.+\}$",
                           "int or string starts with '{' and ends with '}'"),
@@ -394,10 +400,10 @@ class TestServer(metaclass=MetaServerTestState):
     """
     TestServer subclasses must define *tcp_clients* and
     *commands* attributes
- 
+
     tcp_clients must be a list containing dict with *name* and *port* keys.
-    The *port* must be an integer you can use a string surrounded by curly 
-    brackets and the OS will then pick a free port. The *timeout*, *tries* and 
+    The *port* must be an integer you can use a string surrounded by curly
+    brackets and the OS will then pick a free port. The *timeout*, *tries* and
     *wait* keys are optional and allow you to manage TCP connection.
 
     The *commands* must be a list containing dict with *name* and *cmd* keys.
@@ -420,7 +426,7 @@ class TestServer(metaclass=MetaServerTestState):
 
             commands = [
                 {
-                    "name": "launch_server",
+                    "name": "my_server",
                     "cmd": ["python3", "server.py", "{port-1}"],
                 }
             ]
@@ -428,6 +434,94 @@ class TestServer(metaclass=MetaServerTestState):
 
     tcp_clients = []
     commands = []
+
+    class _Server:
+        """
+        Wrap server process and provide assert methods.
+        """
+
+        def __init__(self, parameters):
+            self.popen = Popen(
+                parameters,
+                stdout=PIPE,
+                stderr=PIPE
+            )
+
+            self.selector = selectors.DefaultSelector()
+            self.selector.register(self.popen.stdout,
+                                   selectors.EVENT_READ,
+                                   ('stdout', "server-2"))
+            self.selector.register(self.popen.stderr,
+                                   selectors.EVENT_READ,
+                                   ('stderr', "server-3"))
+
+        def assert_stdout_is(self, expected, timeout):
+            """
+            Test that server logs *expected* on the stdout before *timeout*
+            """
+            self._assert_output(operator.eq, '{read} != {expected}',
+                                'stdout', expected, timeout)
+
+        def assert_stderr_is(self, expected, timeout):
+            """
+            Test that server logs *expected* on the stderr before *timeout*
+            """
+            self._assert_output(operator.eq, '{read} != {expected}',
+                                'stderr', expected, timeout)
+
+        def assert_stdout_regex(self, regex, timeout):
+            """
+            Test that server logs on stdout before *timeout*
+            and message matches *regex*
+            """
+            self._assert_output(lambda a, b: re.search(b, a),
+                                "{read} doesn't match {expected}",
+                                'stdout', regex, timeout)
+
+        def assert_stderr_regex(self, regex, timeout):
+            """
+            Test that server logs on stderr before *timeout*
+            and message matches *regex*
+            """
+            self._assert_output(lambda a, b: re.search(b, a),
+                                "{read} doesn't match {expected}",
+                                'stderr', regex, timeout)
+
+        def _assert_output(self, test_func, assert_msg,
+                           output, expected, timeout):
+            read = None
+            t1 = time.time()
+            not_expected_reads = b''
+            while read is None:
+                keys = self.selector.select(timeout=timeout)
+                if not keys:
+                    break
+
+                for key, events in keys:
+                    if key.data[0] == output:
+                        read = key.fileobj.read1(4096)
+                        if test_func(read.decode('utf-8'), expected):
+                            return
+
+                        not_expected_reads += read
+                        read = None
+                        break
+
+                timeout -= (time.time() - t1)
+
+            if read is None:
+                raise AssertionError("Timeout: No data received")
+            else:
+                raise AssertionError(
+                    assert_msg.format(expected=expected,
+                                      read=not_expected_reads.decode('utf-8')))
+
+        def kill(self):
+            """
+            Kill the process with SIGKILL
+            """
+            self.popen.kill()
+
 
     class _Client:
         def __init__(self, port, timeout, tries, wait):
@@ -457,12 +551,21 @@ class TestServer(metaclass=MetaServerTestState):
                 print(str(socket_error))
 
         def close(self):
+            """
+            Close the socket client.
+            """
             self.socket.close()
 
         def send(self, msg):
+            """
+            send *msg*
+            """
             self.socket.send(msg.encode('utf-8'))
 
-        def assertReceive(self, expected, timeout=2):
+        def assert_receive(self, expected, timeout=2):
+            """
+            Test that client received *expected* before *timeout*.
+            """
             self.socket.settimeout(timeout)
             try:
                 msg = self.socket.recv(256)
@@ -480,6 +583,9 @@ class TestServer(metaclass=MetaServerTestState):
 
     @staticmethod
     def get_free_tcp_port():
+        """
+        Return an unused local tcp port.
+        """
         tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tcp.bind(('', 0))
         port = tcp.getsockname()[1]
@@ -488,6 +594,10 @@ class TestServer(metaclass=MetaServerTestState):
 
     @classmethod
     def start_scenario(cls):
+        """
+        Launches defined servers and provides *clients*, *servers* and
+        *virtual_ports* class attributes.
+        """
         for command in cls.commands:
             parameters = []
             for parameter in command['cmd']:
@@ -500,7 +610,7 @@ class TestServer(metaclass=MetaServerTestState):
                 else:
                     parameters.append(parameter)
 
-            cls.servers[command['name']] = Popen(parameters)
+            cls.servers[command['name']] = cls._Server(parameters)
 
         for tcp_client in cls.tcp_clients:
             port = tcp_client['port']
@@ -516,6 +626,9 @@ class TestServer(metaclass=MetaServerTestState):
 
     @classmethod
     def stop_scenario(cls):
+        """
+        Kill servers
+        """
         for client in cls.clients.values():
             client.close()
         for server in cls.servers.values():
