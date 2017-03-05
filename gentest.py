@@ -15,7 +15,7 @@ import selectors
 from voluptuous import ALLOW_EXTRA, All, Any, Invalid, Match, Optional, Range, Required, Schema
 
 
-__version__ = '1.0b1'
+__version__ = '1.0b2'
 
 
 class MultiDict(dict):
@@ -576,6 +576,22 @@ class TestServer(metaclass=MetaServerTestState):
                 raise AssertionError('{} != {}'
                                      .format(msg.decode('utf-8'),
                                              expected))
+
+        def assert_receive_regex(self, regex, timeout=2):
+            """
+            Test that client received data before *timeout* and data
+            matches *regex*.
+            """
+            self.socket.settimeout(timeout)
+            try:
+                msg = self.socket.recv(256)
+            except socket.timeout:
+                raise AssertionError("Timeout: No data received")
+
+            if re.search(regex, msg.decode('utf-8')):
+                raise AssertionError("{} doesn't match {}"
+                                     .format(msg.decode('utf-8'),
+                                             regex))
 
     virtual_ports = {}
     clients = {}

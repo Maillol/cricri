@@ -90,7 +90,7 @@ We define each state using **TestState** subclass:
 
 
     # You must to use this statment at the end of module to generate **load_tests** function::
-    load_tests = TestState.get_load_tests()
+    load_tests = State.get_load_tests()
 
 
 Call *python3 -m unittest <test_module_name>* to launch test.
