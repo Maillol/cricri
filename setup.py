@@ -1,15 +1,13 @@
 from setuptools import setup
 import sys
 import os
-sys.path.insert(0, '.')
-from gentest import __version__
+sys.path.insert(0, './gentest')
+from __version__ import __version__
 
 path_to_requirements = os.path.join(os.path.dirname(__file__), 'requirements.txt')
 with open(path_to_requirements, 'r') as requirements_file:
     required = requirements_file.read().splitlines()
 
-
-print(required)
 
 if 'a' in __version__:
     development_status = 'Development Status :: 3 - Alpha'
@@ -28,7 +26,7 @@ setup(
     author_email='vincent.maillol@gmail.com',
     url='https://github.com/maillol/scenario',
     license='GPLv3', 
-    py_modules=['gentest'],
+    packages=['gentest'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

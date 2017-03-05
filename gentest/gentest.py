@@ -15,7 +15,8 @@ import selectors
 from voluptuous import ALLOW_EXTRA, All, Any, Invalid, Match, Optional, Range, Required, Schema
 
 
-__version__ = '1.0b2'
+__all__ = ['Condition', 'MetaServerTestState', 'MetaTestState', 'Newer',
+           'Path', 'TestServer', 'TestState', 'condition', 'previous']
 
 
 class MultiDict(dict):
@@ -770,3 +771,4 @@ def condition(cond):
         return func
 
     return decorator
+

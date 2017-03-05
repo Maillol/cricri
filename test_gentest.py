@@ -1,5 +1,6 @@
 import unittest
-from gentest import MultiDict, walk, previous, Path, Newer
+from gentest import previous, Path, Newer
+from gentest.gentest import MultiDict, walk
 
 
 class TestWalk(unittest.TestCase):
