@@ -1,4 +1,4 @@
-from gentest import TestState, previous
+from cricri import TestState, previous
 from coin_operated_turnstile import Turnstile
 
 class TestTurnstile(TestState):

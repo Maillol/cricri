@@ -1,21 +1,21 @@
-gentest - Generate test scenarios using unittest
-================================================
+cricri - Generate test scenarios using unittest
+===============================================
 
-.. image:: https://badge.fury.io/py/gentest.svg
-    :target: https://badge.fury.io/py/gentest
+.. image:: https://badge.fury.io/py/cricri.svg
+    :target: https://badge.fury.io/py/cricri
 
-.. image:: https://api.travis-ci.org/Maillol/scenario.svg?branch=master
-    :target: https://travis-ci.org/Maillol/scenario
+.. image:: https://api.travis-ci.org/Maillol/cricri.svg?branch=master
+    :target: https://travis-ci.org/Maillol/cricri
 
-.. image:: https://readthedocs.org/projects/gentest/badge/?version=latest
-    :target: http://gentest.readthedocs.io/en/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/cricri/badge/?version=latest
+    :target: http://cricri.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
 Determine and write all possible test scenarios of finite state machines is a hard task.
-**gentest** generates test scenarios from state specification.
+**cricri** generates test scenarios from state specification.
 
-What are gentest prerequisites ?
---------------------------------
+What are cricri prerequisites ?
+-------------------------------
 
 python 3.4 or newer
 
@@ -25,7 +25,7 @@ How to install
 
 .. code-block:: bash
 
-    $ pip install gentest
+    $ pip install cricri
 
 
 Example:
@@ -117,5 +117,5 @@ For more example, see `demo directory <https://github.com/Maillol/scenario/tree/
 Documentation:
 --------------
 
-Documentation is online at http://gentest.readthedocs.io
+Documentation is online at http://cricri.readthedocs.io
 

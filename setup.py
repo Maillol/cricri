@@ -1,7 +1,7 @@
 from setuptools import setup
 import sys
 import os
-sys.path.insert(0, './gentest')
+sys.path.insert(0, './cricri')
 from __version__ import __version__
 
 
@@ -14,7 +14,7 @@ else:
 
 
 setup(
-    name='gentest',
+    name='cricri',
     version=__version__,
     description='Scenario test generator',
     keywords='scenario test generator unittest case',
@@ -22,7 +22,7 @@ setup(
     author_email='vincent.maillol@gmail.com',
     url='https://github.com/maillol/scenario',
     license='GPLv3', 
-    packages=['gentest'],
+    packages=['cricri'],
     classifiers=[
         development_status,
         'Intended Audience :: Developers',

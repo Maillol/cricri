@@ -1,4 +1,4 @@
-from gentest import TestServer, previous, Newer, Path, condition
+from cricri import TestServer, previous, Newer, Path, condition
 
 
 class TestChatServer(TestServer):

@@ -1,14 +1,14 @@
-.. gentest documentation master file, created by
+.. cricri documentation master file, created by
    sphinx-quickstart on Sun Dec 18 08:26:14 2016.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Gentest's documentation
-==================================
+Welcome to Cricri's documentation
+=================================
 
-Gentest is a test scenario generator. You define steps using TestState class.
+cricri is a test scenario generator. You define steps using TestState class.
 Each step has input method, set of tests methods, and one or multiple previous steps.
-Gentest finds all paths in the steps and generates one Test Case for each
+cricri finds all paths in the steps and generates one Test Case for each
 path. You can disable test steps depending on the path traveled.
 
 
@@ -17,12 +17,12 @@ Installation
 
 Installing with pip::
 
-    pip install gentest
+    pip install cricri
 
 Installing with git::
 
-    git clone https://github.com/Maillol/scenario.git gentest
-    cd gentest
+    git clone https://github.com/Maillol/scenario.git cricri
+    cd cricri
     python3 setup.py install
 
 
@@ -31,7 +31,7 @@ Basic example
 
 Here is a simple example with three steps to generate two scenario wich test list method::
 
-    from gentest import TestState, previous
+    from cricri import TestState, previous
 
 
     class BaseTestState(TestState):
@@ -65,7 +65,7 @@ Here is a simple example with three steps to generate two scenario wich test lis
     load_tests = BaseTestState.get_load_tests()
 
 
-The *BaseTestState* is created by subclassing *gentest.TestState*.
+The *BaseTestState* is created by subclassing *cricri.TestState*.
 This subclass defines *start_scenario* method in order to store the object
 to be tested in a class attribute.
 The *start_scenario* method will be called once at the beginning of each generated scenario.
@@ -89,11 +89,11 @@ To run this script, use unittest command-line interface::
 
 You will see the following output::
 
-    test_0000_create (gentest.CreateReverseSort) ... ok
-    test_0001_reverse (gentest.CreateReverseSort) ... ok
-    test_0002_sort (gentest.CreateReverseSort) ... ok
-    test_0000_create (gentest.CreateSort) ... ok
-    test_0001_sort (gentest.CreateSort) ... ok
+    test_0000_create (cricri.CreateReverseSort) ... ok
+    test_0001_reverse (cricri.CreateReverseSort) ... ok
+    test_0002_sort (cricri.CreateReverseSort) ... ok
+    test_0000_create (cricri.CreateSort) ... ok
+    test_0001_sort (cricri.CreateSort) ... ok
 
     ----------------------------------------------------------------------
     Ran 5 tests in 0.001s
@@ -104,7 +104,7 @@ You will see the following output::
 Test TCP server
 ===============
 
-gentest provides *TestServer* class to test TCP server. You must subclasse
+cricri provides *TestServer* class to test TCP server. You must subclasse
 *TestServer* and define your servers and clients::
 
     class TestChatServer(TestServer):

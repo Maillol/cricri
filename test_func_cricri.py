@@ -1,7 +1,7 @@
 import unittest
 import unittest.mock
 from unittest.mock import call
-from gentest import previous, TestState, condition, Path
+from cricri import previous, TestState, condition, Path
 
 
 spy = unittest.mock.Mock()

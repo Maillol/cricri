@@ -1,6 +1,6 @@
 import unittest
-from gentest import previous, Path, Newer
-from gentest.gentest import MultiDict, walk
+from cricri import previous, Path, Newer
+from cricri.cricri import MultiDict, walk
 
 
 class TestWalk(unittest.TestCase):

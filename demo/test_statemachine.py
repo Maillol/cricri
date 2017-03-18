@@ -1,4 +1,4 @@
-from gentest import TestState, previous
+from cricri import TestState, previous
 from statemachine import Machine
 
 
