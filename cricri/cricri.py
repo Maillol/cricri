@@ -120,7 +120,8 @@ class MetaTestState(type):
     start_step = {}
 
     @staticmethod
-    def _build_test_method(input_method, names_and_methods, previous_steps):
+    def _build_test_method(input_method, names_and_methods,
+                           previous_steps, skipper):
         """
         Build and return test method for unittest.TestCase class.
 
@@ -131,8 +132,18 @@ class MetaTestState(type):
             """
             Execute input if exists, test methods
             """
+            if skipper.skip:
+                self.skipTest(skipper.reason)
+
             if input_method is not None:
-                input_method(self)
+                try:
+                    input_method(self)
+                except Exception:
+                    skipper.skip = True
+                    skipper.reason = 'Exception occurred in {}' \
+                        .format(input_method.__qualname__)
+                    raise
+
             for name, method in names_and_methods:
                 if (hasattr(method, 'previous_steps') and previous_steps and
                         previous_steps[-1] not in method.previous_steps):
@@ -190,6 +201,8 @@ class MetaTestState(type):
             attrs = {}
             previous_step_name = None
             previous_steps_names = []
+            skipper = types.SimpleNamespace(skip=False, reason='')
+
             for step_num, step_name in enumerate(scenario):
                 step = mcs.steps[cls][step_name]
                 input_method = mcs._select_input_method(step.inputs,
@@ -206,7 +219,8 @@ class MetaTestState(type):
 
                 attrs[method_name] = mcs._build_test_method(input_method,
                                                             test_methods,
-                                                            tuple(previous_steps_names))
+                                                            tuple(previous_steps_names),
+                                                            skipper)
 
                 previous_step_name = step_name
                 previous_steps_names.append(step_name)

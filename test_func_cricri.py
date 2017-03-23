@@ -37,11 +37,13 @@ class SpyTestState(unittest.TestCase):
         self.assertIn(test_name, type(self).test_cases)
         self._execute_test_case(test_name)
         calls = [call(spy_call) for spy_call in spy_calls]
-        spy.assert_has_calls(calls)
+        if spy.mock_calls != calls:
+            raise AssertionError('Calls not found.\n'
+                                 'Expected: {}\n'
+                                 'Actual: {}\n'.format(calls, spy.mock_calls))
 
 
 class TestPreviousOnTestMethod(SpyTestState):
-
 
     class BaseTestState(TestState):
         ...
@@ -222,4 +224,34 @@ class TestStartStopMethods(SpyTestState):
         self.assertExec('ABA',
                         ("A.start", "A.test_1 ok",
                          "B.test_1", "A.test_1 ok", "A.stop"))
+
+
+class TestInputCrash(SpyTestState):
+
+    class BaseTestState(TestState):
+        ...
+
+    class A(BaseTestState, start=True):
+        def test_1(self):
+            spy('A.test_1')
+
+    class B(BaseTestState, previous=['A']):
+        def input(self):
+            raise ValueError('Answer is 42')
+
+        def test_1(self):
+            spy('B.test_1')
+
+    class C(BaseTestState, previous=['B', 'A']):
+        def test_1(self):
+            spy('C.test_1')
+
+    def test_execute_ac(self):
+        self.assertExec('AC',
+                        ("A.test_1", "C.test_1"))
+
+    def test_execute_abc(self):
+        self.assertExec('ABC', ("A.test_1",))
+
+
 
