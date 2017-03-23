@@ -3,8 +3,10 @@ Module to generate test scenarios from scenario step.
 """
 
 from collections import defaultdict
+from .http_client import HTTPClient
+import json
 import socket
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STDOUT
 import time
 import types
 import unittest
@@ -310,7 +312,20 @@ class MetaServerTestState(MetaTestState):
 
     valid_attributes = Schema(
         {
-            Required("tcp_clients", 'required class attribute'): [
+            Optional("http_clients", 'required class attribute'): [
+                {
+                    Required("name"): str,
+                    Required("host"): str,
+                    Required("port"): _port_def,
+                    Optional("timeout", default=2): Range(0, min_included=False),
+                    Optional("tries", default=3): All(int, Range(0, min_included=False)),
+                    Optional("wait", default=1): Range(0, min_included=False),
+                    Optional("headers", default=[]): list,
+                    Optional("extra_headers", default=None): Any(list, None) 
+                }
+            ],
+
+            Optional("tcp_clients", 'required class attribute'): [
                 {
                     Required("name"): str,
                     Required("port"): _port_def,
@@ -382,6 +397,7 @@ class TestServer(metaclass=MetaServerTestState):
             ]
     """
 
+    http_clients = []
     tcp_clients = []
     commands = []
 
@@ -588,6 +604,21 @@ class TestServer(metaclass=MetaServerTestState):
                                  tcp_client['wait'])
 
             cls.clients[tcp_client['name']] = client
+
+        for http_client in cls.http_clients:
+            port = http_client['port']
+            if port.startswith('{') and port.endswith('}'):
+                port = cls.virtual_ports[port]
+
+            client = HTTPClient(http_client['host'],
+                                port,
+                                http_client['timeout'],
+                                http_client['tries'],
+                                http_client['wait'],
+                                http_client['headers'],
+                                http_client['extra_headers'])
+
+            cls.clients[http_client['name']] = client
 
     @classmethod
     def stop_scenario(cls):
