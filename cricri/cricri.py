@@ -190,6 +190,19 @@ class MetaTestState(type):
             if previous_step in input_method.previous_steps:
                 return input_method
 
+    def _set_mtd(cls, mtd_name, attrs, key_name):
+        """
+        Add mtd_name to attrs dict.
+
+            attrs[key_name] = cls.mtd_name
+        """
+        mtd = getattr(cls, mtd_name, None)
+        if mtd is not None:
+            if not isinstance(mtd, types.MethodType):
+                raise TypeError("{}.{} must be a classmethod"
+                                .format(cls, mtd_name))
+            attrs[key_name] = mtd
+
     def get_test_cases(cls, max_loop):
         """
         Build and return unittest.TestCase subclasses.
@@ -225,21 +238,8 @@ class MetaTestState(type):
                 previous_step_name = step_name
                 previous_steps_names.append(step_name)
 
-            start_scenario = getattr(cls, 'start_scenario', None)
-            if start_scenario is not None:
-                if not isinstance(start_scenario, types.MethodType):
-                    raise TypeError("{}.start_scenario must be a classmethod"
-                                    .format(cls))
-
-                attrs['setUpClass'] = start_scenario
-
-            stop_scenario = getattr(cls, 'stop_scenario', None)
-            if stop_scenario is not None:
-                if not isinstance(start_scenario, types.MethodType):
-                    raise TypeError("{}.stop_scenario must be a classmethod"
-                                    .format(cls))
-
-                attrs['tearDownClass'] = stop_scenario
+            cls._set_mtd('start_scenario', attrs, 'setUpClass')
+            cls._set_mtd('stop_scenario', attrs, 'tearDownClass')
 
             test_case_list.append(type(''.join(scenario),
                                        (unittest.TestCase,) + step.__bases__,
@@ -290,7 +290,7 @@ class MetaTestState(type):
         return cls
 
     @classmethod
-    def __prepare__(mcs, name, bases, **kwargs):
+    def __prepare__(_mcs, _name, _bases, **kwargs):
         return MultiDict(dict(input='inputs'))
 
 
@@ -488,7 +488,7 @@ class TestServer(metaclass=MetaServerTestState):
                 if not keys:
                     break
 
-                for key, events in keys:
+                for key, _ in keys:
                     if key.data[0] == output:
                         read = key.fileobj.read1(4096)
                         if test_func(read.decode('utf-8'), expected):
