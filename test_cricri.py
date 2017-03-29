@@ -3,63 +3,6 @@ from cricri import previous, Path, Newer
 from cricri.cricri import MultiDict, walk
 
 
-class TestWalk(unittest.TestCase):
-
-    simple_graph = {
-        'A': ['B'],
-        'B': ['C', 'G'],
-        'C': ['D', 'E', 'G'],
-        'D': ['G'],
-        'E': ['F', 'G'],
-        'F': ['G'],
-        'G': []
-    }
-
-    graph_with_loop = {
-        'A': ['B'],
-        'B': ['C'],
-        'C': ['D', 'E'],
-        'D': ['B'],
-        'E': ['F', 'G'],
-        'F': ['D'],
-        'G': []
-    }
-
-    def test_walk_simple_graph(self):
-        paths = walk(self.simple_graph, 'A')
-        expected = (
-            ('A', 'B', 'C', 'D', 'G'),
-            ('A', 'B', 'C', 'E', 'F', 'G'),
-            ('A', 'B', 'C', 'E', 'G'),
-            ('A', 'B', 'C', 'G'),
-            ('A', 'B', 'G'),
-        )
-
-        self.assertCountEqual(paths, expected)
-
-    def test_walk_graph_with_1_loop(self):
-        paths = walk(self.graph_with_loop, 'A')
-        expected = (
-            ('A', 'B', 'C', 'D', 'B'),
-            ('A', 'B', 'C', 'E', 'F', 'D', 'B'),
-            ('A', 'B', 'C', 'E', 'G'),
-        )
-
-        self.assertCountEqual(paths, expected)
-
-    def test_walk_graph_with_2_loop(self):
-        paths = walk(self.graph_with_loop, 'A', 2)
-        expected = (
-            ('A', 'B', 'C', 'D', 'B', 'C', 'D', 'B'),
-            ('A', 'B', 'C', 'D', 'B', 'C', 'E', 'F', 'D', 'B'),
-            ('A', 'B', 'C', 'E', 'F', 'D', 'B', 'C', 'D', 'B'),
-            ('A', 'B', 'C', 'E', 'F', 'D', 'B', 'C', 'E', 'F', 'D', 'B'),
-            ('A', 'B', 'C', 'E', 'G'),
-        )
-
-        self.assertCountEqual(paths, expected)
-
-
 class TestPrevious(unittest.TestCase):
 
     def test_decorate_function(self):

@@ -1,0 +1,65 @@
+import unittest
+from algo import walk
+
+
+class TestWalkMax(unittest.TestCase):
+    graph_1 = {
+        'A': ['B'],
+        'B': ['C'],
+        'C': []
+    }
+
+    expected_1 = (
+        ('A', 'B', 'C'),
+    )
+
+    expected_1_loop_2 = expected_1
+
+    graph_2 = {
+        'A': ['A', 'B'],
+        'B': ['A', 'B'],
+    }
+
+    expected_2 = (
+        ('A', 'A', 'B', 'A'),
+        ('A', 'A', 'B', 'B', 'A'),
+        ('A', 'B', 'A', 'A'),
+        ('A', 'B', 'B', 'A', 'A'),
+    )
+
+    graph_3 = {
+        'A': ['B'],
+        'B': ['A', 'B'],
+    }
+
+    expected_3 = {    
+        ('A', 'B', 'A'),
+        ('A', 'B', 'B', 'A')
+    }
+
+    expected_3_loop_1 = {
+        ('A', 'B', 'A', 'B', 'B', 'A', 'B', 'A'),
+        ('A', 'B', 'A', 'B', 'A', 'B', 'A', 'B', 'A'),
+        ('A', 'B', 'A', 'B', 'B', 'B', 'B', 'A', 'B', 'A'),
+        ('A', 'B', 'A', 'B', 'A', 'B', 'B', 'B', 'A', 'B', 'A'),
+        ('A', 'B', 'A', 'B', 'B', 'B', 'A', 'B', 'A', 'B', 'A'),
+        ('A', 'B', 'A', 'B', 'A', 'B', 'B', 'A', 'B', 'A', 'B', 'A')
+    }
+
+    def test_graph_1(self):
+        pathes = walk(self.graph_1, 'A')
+        self.assertCountEqual(pathes, self.expected_1)
+
+    def test_graph_2(self):
+        pathes = walk(self.graph_2, 'A')
+        self.assertCountEqual(pathes, self.expected_2)
+
+    def test_graph_3(self):
+        pathes = walk(self.graph_3, 'A')
+        self.assertCountEqual(pathes, self.expected_3)
+
+    def test_graph_3_loop_2(self):
+        pathes = walk(self.graph_3, 'A', nb_loop=1)
+        self.assertCountEqual(pathes, self.expected_3_loop_1)
+
+
