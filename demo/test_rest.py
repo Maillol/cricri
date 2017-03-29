@@ -1,5 +1,6 @@
 from cricri import TestServer, previous, Newer, Path, condition
 
+
 class TestRestServer(TestServer):
 
     id_from_name = {}
@@ -22,7 +23,12 @@ class TestRestServer(TestServer):
     ]
 
 
-class GotHotels(TestRestServer, start=True):
+HOTEL_CALIFORNIA_EXIST = Newer('DeleteHotelCalifornia', 'CreateHotelCalifornia')
+HOTEL_DU_NORD_EXIST = Newer('DeleteHotelDuNord', 'CreateHotelDuNord')
+
+
+class GetHotels(TestRestServer, start=True, previous=["CreateHotelDuNord", "CreateHotelCalifornia",
+                                                      "DeleteHotelDuNord", "DeleteHotelCalifornia"]):
 
     def input(self):
         self.clients["Alice"].get("/hotels")
@@ -30,33 +36,85 @@ class GotHotels(TestRestServer, start=True):
     def test_status_code_should_be_200(self):
         self.clients["Alice"].response.assert_status_code(200)
 
+    @condition(-HOTEL_DU_NORD_EXIST & HOTEL_CALIFORNIA_EXIST)
+    def test_content_has_hotel_california(self):
+        content = self.clients["Alice"].response.content
+        expected = ({
+            "id": self.id_from_name["California"],
+             "name": "California"
+        },)
 
-class CreateCaliforniaHotels(TestRestServer, previous=["GotHotels"]):
+        self.assertCountEqual(content, expected)
 
+    @condition(HOTEL_DU_NORD_EXIST & -HOTEL_CALIFORNIA_EXIST)
+    def test_content_has_hotel_du_nord(self):
+        content = self.clients["Alice"].response.content
+        expected = ({
+            "id": self.id_from_name["Du nord"],
+            "name": "Du nord"
+        },)
+
+        self.assertCountEqual(content, expected)
+
+    @condition(HOTEL_DU_NORD_EXIST & HOTEL_CALIFORNIA_EXIST)
+    def test_content_has_hotel_du_nord(self):
+        content = self.clients["Alice"].response.content
+        expected = ({
+            "id": self.id_from_name["California"],
+             "name": "California"
+        }, {
+            "id": self.id_from_name["Du nord"],
+            "name": "Du nord"
+        })
+
+        self.assertCountEqual(content, expected)
+
+
+class CreateHotelCalifornia(TestRestServer, previous=["GetHotels"]):
+
+    @condition(-HOTEL_CALIFORNIA_EXIST)
     def input(self):
         self.clients["Alice"].post("/hotels", data={"name": "California"})
 
     def test_status_code_should_be_200(self):
         self.clients["Alice"].response.assert_status_code(201)
 
+    def test_content_should_be_hotel(self):
+        content = self.clients["Alice"].response.content
+        self.assertEqual(content["name"], "California")
+        self.id_from_name['California'] = content["id"]
 
-class CreateJadeHotels(TestRestServer, previous=["GotHotels", "CreateCaliforniaHotels"]):
 
+class CreateHotelDuNord(TestRestServer, previous=["GetHotels"]):
+
+    @condition(-HOTEL_DU_NORD_EXIST)
     def input(self):
-        self.clients["Alice"].post("/hotels", data={"name": "Jade"})
+        self.clients["Alice"].post("/hotels", data={"name": "Du nord"})
 
     def test_status_code_should_be_200(self):
         self.clients["Alice"].response.assert_status_code(201)
 
     def test_content_should_be_hotel(self):
         content = self.clients["Alice"].response.content
-        self.assertEqual(content["name"], "Jade")
-        self.id_from_name['Jade'] = content["id"]
+        self.assertEqual(content["name"], "Du nord")
+        self.id_from_name['Du nord'] = content["id"]
 
-class DeleteJadeHotels(TestRestServer, previous=["GotHotels", "CreateJadeHotels"]):
 
+class DeleteHotelCalifornia(TestRestServer, previous=["GetHotels"]):
+
+    @condition(HOTEL_CALIFORNIA_EXIST)
     def input(self):
-        self.clients["Alice"].delete("/hotels/{}".format(self.id_from_name['Jade']))
+        self.clients["Alice"].delete("/hotels/{}".format(self.id_from_name['California']))
+
+    def test_status_code_should_be_204(self):
+        self.clients["Alice"].response.assert_status_code(204)
+
+
+class DeleteHotelDuNord(TestRestServer, previous=["GetHotels"]):
+
+    @condition(HOTEL_DU_NORD_EXIST)
+    def input(self):
+        self.clients["Alice"].delete("/hotels/{}".format(self.id_from_name['Du nord']))
 
     def test_status_code_should_be_204(self):
         self.clients["Alice"].response.assert_status_code(204)

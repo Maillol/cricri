@@ -1,10 +1,15 @@
-from .__version__ import __version__
+"""
+Utility to test HTTP server
+"""
+
 import json
 import socket
 import time
 from urllib.parse import parse_qsl, urlencode
 from urllib.request import urlopen, Request
 from xml.dom.minidom import parseString
+
+from .__version__ import __version__
 
 
 class NoResponseProvidedError(Exception):
@@ -15,6 +20,15 @@ class NoResponseProvidedError(Exception):
 
 
 class HTTPResponse:
+    """
+    Parse response provided by urllib.request.urlopen using
+    conten-type header to deserialize content.
+
+    You can add custom deserializer using deserializers
+    class attribute. The deserializers class attribute is dict where
+    key is lower content-type header. value is callable that take
+    a string in parameter.
+    """
 
     deserializers = {
         'application/json': json.loads,
@@ -31,6 +45,7 @@ class HTTPResponse:
             self.headers = response.headers
             self.version = response.version
             self.content = self._get_content(response)
+            response.close()
 
     def _get_content(self, response):
         """
@@ -45,6 +60,9 @@ class HTTPResponse:
         return deserializer(response.read().decode(charset))
 
     def assert_header_has(self, header, expected_value, separator=','):
+        """
+        Test if header of HTTP response contains the expected_value.
+        """
         current_values = []
         for values in self.headers.get_all(header, []):
             current_values.extend(value.strip()
@@ -57,6 +75,9 @@ class HTTPResponse:
                                          current_values))
 
     def assert_header_is(self, header, expected_values, separator=','):
+        """
+        Test if value header of HTTP response is the *expected_value*.
+        """
         current_values = []
         for values in self.headers.get_all(header, []):
             current_values.extend(value.strip()
@@ -70,27 +91,36 @@ class HTTPResponse:
 
         if expected_values != current_values:
             raise AssertionError('{} HTTP header expected: {} found: {}'
-                                 .format(header, 
+                                 .format(header,
                                          separator.join(expected_values),
                                          separator.join(current_values)))
 
     def assert_status_code(self, status_code):
+        """
+        Test if status code of HTTP response is *status_code*
+        """
         if self.status_code != status_code:
             raise AssertionError('status code expected: {} found: {}'
                                  .format(status_code, self.status_code))
 
     def assert_reason(self, reason):
+        """
+        Test if reason of HTTP response is *reason*
+        """
         if self.reason != reason:
             raise AssertionError('reason expected: {} found: {}'
                                  .format(reason, self.reason))
 
     def __getattribute__(self, name):
         if name.startswith('assert') and not self.response_provided:
-            raise NoResponseProvidedError('Server has not send response')         
+            raise NoResponseProvidedError('Server has not send response')
         return super().__getattribute__(name)
 
 
 class HTTPClient:
+    """
+    Client to performe HTTP request.
+    """
 
     NO_CONTENT = object()
 
@@ -104,6 +134,13 @@ class HTTPClient:
 
     def __init__(self, host, port, timeout, tries,
                  wait, headers, extra_headers=None):
+        """
+        headers - The default headers used when you call request method
+                  without define headers parameter.
+        extra_headers - Always used when you call request method by default
+                        extra_headers contains User-Agent.
+        """
+
         self.host = host
         self.port = port
         self.timeout = timeout
@@ -126,7 +163,7 @@ class HTTPClient:
     def _get_serializer(self, headers):
         """
         Select serialiser from content type header.
-        by defaut 'text/plain' serializer is used. 
+        by defaut 'text/plain' serializer is used.
         """
         serializer = None
         for key, value in headers:
@@ -141,15 +178,26 @@ class HTTPClient:
 
     def request(self, method, url, headers=None,
                 timeout=None, data=NO_CONTENT):
-        
+        """
+        Performe HTTP request to *url*
+
+        method - 'GET', 'POST', ...
+        url - HTTP server URL
+        headers - HTTP headers must be 2-tuple (header, value)
+                  if headers is not define __init__ headers parameters
+                  is used.
+        timeout - Deadline before abort request
+        data - http request content. data is serialised regarding
+               content-type HTTP headers. You can change this behavior
+               updating serializers class attribute.
+        """
+
         if headers is None:
             headers = list(self.default_headers)
-        headers += self.extra_headers 
+        headers += self.extra_headers
 
         if timeout is None:
             timeout = self.timeout
-
-        original_timeout = timeout
 
         headers += [('Host', '{}:{}'
                      .format(self.host, self.port)
@@ -185,33 +233,30 @@ class HTTPClient:
 
     def get(self, *args, **kwargs):
         """
-        Shortcut to request(self, GET, ...) 
+        Shortcut to request(self, GET, ...)
         """
-        self.request('GET',  *args, **kwargs)
+        self.request('GET', *args, **kwargs)
 
     def post(self, *args, **kwargs):
         """
-        Shortcut to request(self, POST, ...) 
+        Shortcut to request(self, POST, ...)
         """
-        self.request('POST',  *args, **kwargs)
+        self.request('POST', *args, **kwargs)
 
     def put(self, *args, **kwargs):
         """
-        Shortcut to request(self, PUT, ...) 
+        Shortcut to request(self, PUT, ...)
         """
-        self.request('PUT',  *args, **kwargs)
+        self.request('PUT', *args, **kwargs)
 
     def delete(self, *args, **kwargs):
         """
-        Shortcut to request(self, DELETE, ...) 
+        Shortcut to request(self, DELETE, ...)
         """
-        self.request('DELETE',  *args, **kwargs)
+        self.request('DELETE', *args, **kwargs)
 
     def patch(self, *args, **kwargs):
         """
-        Shortcut to request(self, PATCH, ...) 
+        Shortcut to request(self, PATCH, ...)
         """
-        self.request('PATCH',  *args, **kwargs)
-
-
-
+        self.request('PATCH', *args, **kwargs)
