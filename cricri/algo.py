@@ -50,6 +50,7 @@ def insert_loop(pathes, loops_from_start):
                 for loop in loops_from_start[node]]
 
         pathes_with_loop.extend(path_with_loop)
+
     return pathes_with_loop
 
 
@@ -100,5 +101,9 @@ def walk(graph, start, nb_loop=0):
             for start, loops
             in loops_from_start.items()
         }
+
+        for node in graph:
+            loops_from_start.setdefault(node, [(node,)])
         longer_pathes = insert_loop(longer_pathes, loops_from_start)
+
     return longer_pathes

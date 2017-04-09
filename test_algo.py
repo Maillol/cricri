@@ -1,8 +1,8 @@
 import unittest
-from algo import walk
+from cricri.algo import walk
 
 
-class TestWalkMax(unittest.TestCase):
+class TestWalk(unittest.TestCase):
     graph_1 = {
         'A': ['B'],
         'B': ['C'],
@@ -32,7 +32,7 @@ class TestWalkMax(unittest.TestCase):
         'B': ['A', 'B'],
     }
 
-    expected_3 = {    
+    expected_3 = {
         ('A', 'B', 'A'),
         ('A', 'B', 'B', 'A')
     }
@@ -46,6 +46,25 @@ class TestWalkMax(unittest.TestCase):
         ('A', 'B', 'A', 'B', 'A', 'B', 'B', 'A', 'B', 'A', 'B', 'A')
     }
 
+    graph_4 = {
+        'A': ['B'],
+        'B': ['A'],
+    }
+
+    expected_4 = [
+        ('A', 'B', 'A'),
+    ]
+
+    expected_4_loop_1 = [
+        ('A', 'B', 'A', 'B', 'A', 'B', 'A', 'B', 'A')
+    ]
+
+    expected_4_loop_2 = [
+        ('A', 'B', 'A', 'B', 'A',
+         'B', 'A', 'B', 'A', 'B',
+         'A', 'B', 'A', 'B', 'A')
+    ]
+
     def test_graph_1(self):
         pathes = walk(self.graph_1, 'A')
         self.assertCountEqual(pathes, self.expected_1)
@@ -58,8 +77,18 @@ class TestWalkMax(unittest.TestCase):
         pathes = walk(self.graph_3, 'A')
         self.assertCountEqual(pathes, self.expected_3)
 
-    def test_graph_3_loop_2(self):
+    def test_graph_3_loop_1(self):
         pathes = walk(self.graph_3, 'A', nb_loop=1)
         self.assertCountEqual(pathes, self.expected_3_loop_1)
 
+    def test_graph_4(self):
+        pathes = walk(self.graph_4, 'A')
+        self.assertCountEqual(pathes, self.expected_4)
 
+    def test_graph_4_loop_1(self):
+        pathes = walk(self.graph_4, 'A', nb_loop=1)
+        self.assertCountEqual(pathes, self.expected_4_loop_1)
+
+    def test_graph_4_loop_2(self):
+        pathes = walk(self.graph_4, 'A', nb_loop=2)
+        self.assertCountEqual(pathes, self.expected_4_loop_2)

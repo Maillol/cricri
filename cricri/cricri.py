@@ -15,6 +15,8 @@ import selectors
 from voluptuous import ALLOW_EXTRA, All, Any, Invalid, Match, \
                        Optional, Range, Required, Schema
 
+from .algo import walk
+
 
 __all__ = ['MetaServerTestState', 'MetaTestState', 'TestServer', 'TestState']
 
@@ -191,7 +193,7 @@ class MetaTestState(type):
                                        attrs))
         return test_case_list
 
-    def get_load_tests(cls, max_loop=1):
+    def get_load_tests(cls, max_loop=0):
         """
         Build and return load_tests function.
         """
@@ -235,7 +237,7 @@ class MetaTestState(type):
         return cls
 
     @classmethod
-    def __prepare__(_mcs, _name, _bases, **kwargs):
+    def __prepare__(mcs, _name, _bases, **kwargs):
         return MultiDict(dict(input='inputs'))
 
 
@@ -282,8 +284,8 @@ class TestState(metaclass=MetaTestState):
             @previous(['StateB'])
             def input(self):
                 type(self).machine.m1()
-
     """
+
 
 class MetaServerTestState(MetaTestState):
     """
@@ -457,7 +459,6 @@ class TestServer(metaclass=MetaServerTestState):
             Kill the process with SIGKILL
             """
             self.popen.kill()
-
 
     class _Client:
         def __init__(self, port, timeout, tries, wait):

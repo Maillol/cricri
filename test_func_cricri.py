@@ -6,6 +6,7 @@ from cricri import previous, TestState, condition, Path
 
 spy = unittest.mock.Mock()
 
+
 class SpyTestState(unittest.TestCase):
     """
     SpyTestState reset spy before each test.
@@ -20,8 +21,8 @@ class SpyTestState(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.test_cases = {test.__name__: test
-              for test
-              in cls.BaseTestState.get_test_cases(1)}
+                          for test
+                          in cls.BaseTestState.get_test_cases(0)}
 
     def _execute_test_case(self, test_name):
         cls = type(self)
@@ -127,8 +128,10 @@ class TestPreviousOnInputMethod(SpyTestState):
     def test_generated_tests_are_BaseTestState(self):
         """generated tests must be subclass of BaseTestState"""
         cls = type(self)
-        self.assertTrue(issubclass(cls.test_cases['ABC'], type(self).BaseTestState))
-        self.assertTrue(issubclass(cls.test_cases['AC'], type(self).BaseTestState))
+        self.assertTrue(issubclass(cls.test_cases['ABC'],
+                        type(self).BaseTestState))
+        self.assertTrue(issubclass(cls.test_cases['AC'],
+                        type(self).BaseTestState))
 
     def test_two_tests_are_generated(self):
         cls = type(self)
@@ -209,7 +212,6 @@ class TestStartStopMethods(SpyTestState):
         def stop_scenario(cls):
             spy('A.stop')
 
-
     class A(BaseTestState, start=True, previous=['B']):
         def test_1(self):
             attr = getattr(self, 'attr',
@@ -252,6 +254,3 @@ class TestInputCrash(SpyTestState):
 
     def test_execute_abc(self):
         self.assertExec('ABC', ("A.test_1",))
-
-
-
