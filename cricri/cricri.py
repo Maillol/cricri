@@ -67,12 +67,9 @@ class MetaTestState(type):
     start_step = {}
 
     @staticmethod
-    def _build_test_method(input_method, names_and_methods,
-                           previous_steps, skipper):
+    def _build_test_method(input_method, names_and_methods, skipper):
         """
         Build and return test method for unittest.TestCase class.
-
-            previous_steps - list of previous step executed.
         """
 
         def test(self):
@@ -91,13 +88,7 @@ class MetaTestState(type):
                         .format(input_method.__qualname__)
                     raise
 
-            for name, method in names_and_methods:
-                if (hasattr(method, 'previous_steps') and previous_steps and
-                        previous_steps[-1] not in method.previous_steps):
-                    continue
-
-                func_condition = getattr(method, 'condition', lambda s: True)
-                if func_condition(previous_steps):
+                for name, method in names_and_methods:
                     with self.subTest(name=name):
                         method(self)
 
@@ -123,19 +114,39 @@ class MetaTestState(type):
         return walk(step_from_previous, start_step, max_loop)
 
     @staticmethod
-    def _select_input_method(inputs, previous_step):
+    def method_is_enable(mtd, previous_steps):
+        condition = getattr(mtd, 'condition',
+                            lambda _steps: True)
+        if condition(previous_steps):
+            if not hasattr(mtd, 'previous_steps'):
+                return True
+            if previous_steps:
+                return previous_steps[-1] in mtd.previous_steps
+            return True
+        return False
+
+    @staticmethod
+    def _select_input_method(inputs, previous_steps):
         """
         Select input method using previous_steps.
 
         inputs - list of input method decorated with previous decorator.
-        previous_step - string, name of previous steps
+        previous_step - string, name of previous steps.
         """
-        if len(inputs) == 1:
-            return inputs[0]
 
-        for input_method in inputs:
-            if previous_step in input_method.previous_steps:
-                return input_method
+        valids_inputs = [input_mtd
+                         for input_mtd
+                         in inputs
+                         if MetaTestState.method_is_enable(input_mtd,
+                                                           previous_steps)]
+
+        if len(valids_inputs) > 1:
+            step_name = valids_inputs[0].__qualname__.rsplit('.', 1)[0]
+            raise AttributeError('Multiple inputs methods are valid in {}'
+                                 .format(step_name))
+
+        if valids_inputs:
+            return valids_inputs[0]
 
     def _set_mtd(cls, mtd_name, attrs, key_name):
         """
@@ -166,20 +177,21 @@ class MetaTestState(type):
             for step_num, step_name in enumerate(scenario):
                 step = mcs.steps[cls][step_name]
                 input_method = mcs._select_input_method(step.inputs,
-                                                        previous_step_name)
+                                                        previous_steps_names)
 
                 test_methods = tuple(
                     sorted((name, attr)
                            for name, attr
                            in vars(step).items()
-                           if name.startswith('test')))
+                           if name.startswith('test')
+                           and mcs.method_is_enable(attr,
+                                                    previous_steps_names)))
 
                 method_name = "test_{:>04}_{}".format(
                     step_num, step_name.split('.')[-1].lower())
 
                 attrs[method_name] = mcs._build_test_method(input_method,
                                                             test_methods,
-                                                            tuple(previous_steps_names),
                                                             skipper)
 
                 previous_step_name = step_name

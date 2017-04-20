@@ -37,7 +37,7 @@ class Start(TestChatServer, start=True):
             'server listen on port \d+', timeout=2
         )
 
-class AliceAskedNickname(TestChatServer, previous=["Start", "AliceAskedNickname", "BobAskedNickname"]):
+class AliceAskedNickname(TestChatServer, previous=["Start"]):
 
     def input(self):
         self.clients["Alice"].send("MY_NAME_IS;Alice;")

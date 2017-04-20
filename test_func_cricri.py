@@ -50,17 +50,26 @@ class TestPreviousOnTestMethod(SpyTestState):
         ...
 
     class A(BaseTestState, start=True):
-        ...
+        def input(self):
+            pass
 
     class B1(BaseTestState, previous=['A']):
+        def input(self):
+            pass
+
         def test_1(self):
             spy("B1.test")
 
     class B2(BaseTestState, previous=['A']):
+        def input(self):
+            pass
+
         def test_1(self):
             spy("B2.test")
 
     class C(BaseTestState, previous=['B1', 'B2']):
+        def input(self):
+            pass
 
         @previous(['B1'])
         def test_b1(self):
@@ -89,7 +98,6 @@ class TestPreviousOnInputMethod(SpyTestState):
             spy("A.start")
 
     class A(BaseTestState, start=True):
-
         def input(self):
             spy("A.input")
 
@@ -169,18 +177,29 @@ class TestPathCondition(SpyTestState):
         ...
 
     class A(BaseTestState, start=True):
+        def input(self):
+            pass
+
         def test_1(self):
             spy('A.test_1')
 
     class B(BaseTestState, previous=['A']):
+        def input(self):
+            pass
+
         def test_1(self):
             spy('B.test_1')
 
     class C(BaseTestState, previous=['B', 'A']):
+        def input(self):
+            pass
+
         def test_1(self):
             spy('C.test_1')
 
     class D(BaseTestState, previous=['C']):
+        def input(self):
+            pass
 
         @condition(Path("A", "C"))
         def test_1(self):
@@ -202,6 +221,8 @@ class TestPathCondition(SpyTestState):
 class TestStartStopMethods(SpyTestState):
 
     class BaseTestState(TestState):
+        def input(self):
+            pass
 
         @classmethod
         def start_scenario(cls):
@@ -213,12 +234,18 @@ class TestStartStopMethods(SpyTestState):
             spy('A.stop')
 
     class A(BaseTestState, start=True, previous=['B']):
+        def input(self):
+            pass
+
         def test_1(self):
             attr = getattr(self, 'attr',
                            'should get attr defined from start_scenario')
             spy('A.test_1 {}'.format(attr))
 
     class B(BaseTestState, previous=['A']):
+        def input(self):
+            pass
+
         def test_1(self):
             spy('B.test_1')
 
@@ -234,6 +261,9 @@ class TestInputCrash(SpyTestState):
         ...
 
     class A(BaseTestState, start=True):
+        def input(self):
+            pass
+
         def test_1(self):
             spy('A.test_1')
 
@@ -245,6 +275,9 @@ class TestInputCrash(SpyTestState):
             spy('B.test_1')
 
     class C(BaseTestState, previous=['B', 'A']):
+        def input(self):
+            pass
+
         def test_1(self):
             spy('C.test_1')
 
@@ -254,3 +287,89 @@ class TestInputCrash(SpyTestState):
 
     def test_execute_abc(self):
         self.assertExec('ABC', ("A.test_1",))
+
+
+class TestInputWithCondition(SpyTestState):
+
+    class BaseTestState(TestState):
+        ...
+
+    class A(BaseTestState, start=True):
+        def input(self):
+            pass
+
+        def test_1(self):
+            spy('A.test_1')
+
+    class B1(BaseTestState, previous=['A']):
+        def input(self):
+            pass
+
+        def test_1(self):
+            spy('B1.test_1')
+
+    class B2(BaseTestState, previous=['A']):
+        def input(self):
+            pass
+
+        def test_1(self):
+            spy('B2.test_1')
+
+    class C(BaseTestState, previous=['B1', 'B2']):
+
+        @condition(Path('B1'))
+        def input(self):
+            spy('C.input')
+
+        def test_1(self):
+            spy('C.test_1')
+
+    class D(BaseTestState, previous=['C']):
+        def input(self):
+            pass
+
+        def test_1(self):
+            spy('D.test_1')
+
+
+    def test_execute_ab1cd(self):
+        self.assertExec('AB1CD',
+                        ("A.test_1",
+                         "B1.test_1",
+                         "C.input", "C.test_1",
+                         "D.test_1"))
+
+    def test_execute_ab2cd(self):
+        self.assertExec('AB2CD',
+                        ("A.test_1",
+                         "B2.test_1",
+                         "D.test_1"))
+
+
+class TestShouldRaiseIfCannotChooseInput(unittest.TestCase):
+
+    class BaseTestState(TestState):
+        ...
+
+    class A(BaseTestState, start=True):
+        def input(self):
+            pass
+
+    class B(BaseTestState, previous=['A']):
+
+        @previous(['A'])
+        def input(self):
+            pass
+
+        @condition(Path('A'))
+        def input(self):
+            pass
+
+    def test_should_raise(self):
+        with self.assertRaises(AttributeError) as cm:
+            self.BaseTestState.get_test_cases(0)
+
+        self.assertEqual(str(cm.exception),
+                        'Multiple inputs methods are valid in '
+                        'TestShouldRaiseIfCannotChooseInput.B')
+
