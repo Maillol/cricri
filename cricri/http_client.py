@@ -135,10 +135,25 @@ class HTTPClient:
     def __init__(self, host, port, timeout, tries,
                  wait, headers, extra_headers=None):
         """
-        headers - The default headers used when you call request method
-                  without define headers parameter.
-        extra_headers - Always used when you call request method by default
-                        extra_headers contains User-Agent.
+        :param host: Server host
+        :type host: str
+
+        :param port: The number of tries
+        :type port: int
+
+        :param tries: The number of tries
+        :type tries: int
+
+        :param timeout: Deadline before abort request
+        :type timeout: int
+
+        :param headers: The default headers used when you call request method
+                        without define headers parameter.
+        :type headers: List[Tuple]
+
+        :param extra_headers: Always used when you call request method by default
+                              extra_headers contains the User-Agent.
+        :type extra_headers: List[Tuple]
         """
 
         self.host = host
@@ -176,20 +191,30 @@ class HTTPClient:
 
         return serializer
 
-    def request(self, method, url, headers=None,
+    def request(self, method, path, headers=None,
                 timeout=None, data=NO_CONTENT):
         """
-        Performe HTTP request to *url*
+        Performe HTTP request to *path*
 
-        method - 'GET', 'POST', ...
-        url - HTTP server URL
-        headers - HTTP headers must be 2-tuple (header, value)
-                  if headers is not define __init__ headers parameters
-                  is used.
-        timeout - Deadline before abort request
-        data - http request content. data is serialised regarding
-               content-type HTTP headers. You can change this behavior
-               updating serializers class attribute.
+
+        :param method: HTTP verb such as 'GET', 'POST', ...
+        :type method: str
+
+        :param path: HTTP server path
+        :type path: str
+
+        :param headers: HTTP headers must be 2-tuple (header, value)
+                        if headers is not define *__init__* headers parameter
+                        is used.
+        :type headers: List[Tuple]
+
+        :param timeout: Deadline before abort request
+        :type timeout: int
+
+        :param data: HTTP request content. data is serialised regarding the
+                     content-type define in the HTTP headers. You can change
+                     this behavior updating *serializers* class attribute.
+        :type data: object
         """
 
         if headers is None:
@@ -203,7 +228,7 @@ class HTTPClient:
                      .format(self.host, self.port)
                      .encode('utf-8'))]
 
-        url = 'http://{}:{}{}'.format(self.host, self.port, url)
+        url = 'http://{}:{}{}'.format(self.host, self.port, path)
         request = Request(url, method=method, headers=dict(headers))
         if data is not self.NO_CONTENT:
             content = self._get_serializer(headers)(data)
@@ -233,30 +258,30 @@ class HTTPClient:
 
     def get(self, *args, **kwargs):
         """
-        Shortcut to request(self, GET, ...)
+        Shortcut to request(GET, ...)
         """
         self.request('GET', *args, **kwargs)
 
     def post(self, *args, **kwargs):
         """
-        Shortcut to request(self, POST, ...)
+        Shortcut to request(POST, ...)
         """
         self.request('POST', *args, **kwargs)
 
     def put(self, *args, **kwargs):
         """
-        Shortcut to request(self, PUT, ...)
+        Shortcut to request(PUT, ...)
         """
         self.request('PUT', *args, **kwargs)
 
     def delete(self, *args, **kwargs):
         """
-        Shortcut to request(self, DELETE, ...)
+        Shortcut to request(DELETE, ...)
         """
         self.request('DELETE', *args, **kwargs)
 
     def patch(self, *args, **kwargs):
         """
-        Shortcut to request(self, PATCH, ...)
+        Shortcut to request(PATCH, ...)
         """
         self.request('PATCH', *args, **kwargs)

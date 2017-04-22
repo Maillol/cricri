@@ -57,7 +57,7 @@ class GetHotels(TestRestServer, start=True, previous=["CreateHotelDuNord", "Crea
         self.assertCountEqual(content, expected)
 
     @condition(HOTEL_DU_NORD_EXIST & HOTEL_CALIFORNIA_EXIST)
-    def test_content_has_hotel_du_nord(self):
+    def test_content_has_both_hotels(self):
         content = self.clients["Alice"].response.content
         expected = ({
             "id": self.id_from_name["California"],
@@ -76,7 +76,7 @@ class CreateHotelCalifornia(TestRestServer, previous=["GetHotels"]):
     def input(self):
         self.clients["Alice"].post("/hotels", data={"name": "California"})
 
-    def test_status_code_should_be_200(self):
+    def test_status_code_should_be_201(self):
         self.clients["Alice"].response.assert_status_code(201)
 
     def test_content_should_be_hotel(self):
@@ -91,7 +91,7 @@ class CreateHotelDuNord(TestRestServer, previous=["GetHotels"]):
     def input(self):
         self.clients["Alice"].post("/hotels", data={"name": "Du nord"})
 
-    def test_status_code_should_be_200(self):
+    def test_status_code_should_be_201(self):
         self.clients["Alice"].response.assert_status_code(201)
 
     def test_content_should_be_hotel(self):
