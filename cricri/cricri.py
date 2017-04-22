@@ -3,10 +3,8 @@ Module to generate test scenarios from scenario step.
 """
 
 from collections import defaultdict
-from .http_client import HTTPClient
-import json
 import socket
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE
 import time
 import types
 import unittest
@@ -18,7 +16,8 @@ from voluptuous import ALLOW_EXTRA, All, Any, Invalid, Match, \
                        Optional, Range, Required, Schema
 
 from .algo import walk
-
+from .http_client import HTTPClient
+from .tcp_client import TCPClient
 
 __all__ = ['MetaServerTestState', 'MetaTestState', 'TestServer', 'TestState']
 
@@ -117,6 +116,9 @@ class MetaTestState(type):
 
     @staticmethod
     def method_is_enable(mtd, previous_steps):
+        """
+        Return True if mtd is enable regarding previous_step.
+        """
         condition = getattr(mtd, 'condition',
                             lambda _steps: True)
         if condition(previous_steps):
@@ -172,7 +174,6 @@ class MetaTestState(type):
 
         for scenario in mcs._generate_scenarios(cls, max_loop):
             attrs = {}
-            previous_step_name = None
             previous_steps_names = []
             skipper = types.SimpleNamespace(skip=False, reason='')
 
@@ -196,7 +197,6 @@ class MetaTestState(type):
                                                             test_methods,
                                                             skipper)
 
-                previous_step_name = step_name
                 previous_steps_names.append(step_name)
 
             cls._set_mtd('start_scenario', attrs, 'setUpClass')
@@ -212,6 +212,10 @@ class MetaTestState(type):
         Build and return load_tests function.
         """
         def load_tests(loader, tests, pattern):
+            """
+            unittest hook responsible for loading
+            all tests in the package.
+            """
             suite = unittest.TestSuite()
             for test in cls.get_test_cases(max_loop):
                 suite.addTests(loader.loadTestsFromTestCase(test))
@@ -321,7 +325,7 @@ class MetaServerTestState(MetaTestState):
                     Optional("tries", default=3): All(int, Range(0, min_included=False)),
                     Optional("wait", default=1): Range(0, min_included=False),
                     Optional("headers", default=[]): list,
-                    Optional("extra_headers", default=None): Any(list, None) 
+                    Optional("extra_headers", default=None): Any(list, None)
                 }
             ],
 
@@ -488,76 +492,6 @@ class TestServer(metaclass=MetaServerTestState):
             """
             self.popen.kill()
 
-    class _Client:
-        def __init__(self, port, timeout, tries, wait):
-            self.socket = socket.socket(socket.AF_INET,
-                                        socket.SOCK_STREAM)
-
-            self.socket.settimeout(timeout)
-
-            socket_error = None
-            for _ in range(tries):
-                start = time.time()
-                try:
-                    self.socket.connect(("127.0.0.1", int(port)))
-                except socket.timeout as error:
-                    socket_error = error
-                except OSError as error:
-                    socket_error = error
-                    if wait is None:
-                        time.sleep(timeout - (time.time() - start))
-                    else:
-                        time.sleep(wait)
-                else:
-                    socket_error = None
-                    break
-
-            if socket_error is not None:
-                print(str(socket_error))
-
-        def close(self):
-            """
-            Close the socket client.
-            """
-            self.socket.close()
-
-        def send(self, msg):
-            """
-            send *msg*
-            """
-            self.socket.send(msg.encode('utf-8'))
-
-        def assert_receive(self, expected, timeout=2):
-            """
-            Test that client received *expected* before *timeout*.
-            """
-            self.socket.settimeout(timeout)
-            try:
-                msg = self.socket.recv(256)
-            except socket.timeout:
-                raise AssertionError("Timeout: No data received")
-
-            if msg.decode('utf-8') != expected:
-                raise AssertionError('{} != {}'
-                                     .format(msg.decode('utf-8'),
-                                             expected))
-
-        def assert_receive_regex(self, regex, timeout=2):
-            """
-            Test that client received data before *timeout* and data
-            matches *regex*.
-            """
-            self.socket.settimeout(timeout)
-            try:
-                msg = self.socket.recv(256)
-            except socket.timeout:
-                raise AssertionError("Timeout: No data received")
-
-            if re.search(regex, msg.decode('utf-8')):
-                raise AssertionError("{} doesn't match {}"
-                                     .format(msg.decode('utf-8'),
-                                             regex))
-
     virtual_ports = {}
     clients = {}
     servers = {}
@@ -598,27 +532,26 @@ class TestServer(metaclass=MetaServerTestState):
             if port.startswith('{') and port.endswith('}'):
                 port = cls.virtual_ports[port]
 
-            client = cls._Client(port,
-                                 tcp_client['timeout'],
-                                 tcp_client['tries'],
-                                 tcp_client['wait'])
-
-            cls.clients[tcp_client['name']] = client
+            cls.clients[tcp_client['name']] = TCPClient(
+                port,
+                tcp_client['timeout'],
+                tcp_client['tries'],
+                tcp_client['wait'])
 
         for http_client in cls.http_clients:
             port = http_client['port']
             if port.startswith('{') and port.endswith('}'):
                 port = cls.virtual_ports[port]
 
-            client = HTTPClient(http_client['host'],
-                                port,
-                                http_client['timeout'],
-                                http_client['tries'],
-                                http_client['wait'],
-                                http_client['headers'],
-                                http_client['extra_headers'])
+            cls.clients[http_client['name']] = HTTPClient(
+                http_client['host'],
+                port,
+                http_client['timeout'],
+                http_client['tries'],
+                http_client['wait'],
+                http_client['headers'],
+                http_client['extra_headers'])
 
-            cls.clients[http_client['name']] = client
 
     @classmethod
     def stop_scenario(cls):
