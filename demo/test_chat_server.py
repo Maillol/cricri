@@ -51,14 +51,10 @@ class AliceAskedNickname(TestChatServer, previous=["Start"]):
         self.clients["Alice"].assert_receive('OK')
 
 
-class BobAskedNickname(TestChatServer, previous=["Start", "AliceAskedNickname", "BobAskedNickname"]):
+class BobAskedNickname(TestChatServer, previous=["Start", "AliceAskedNickname"]):
 
     def input(self):
         self.clients["Bob"].send("MY_NAME_IS;Bob;")
-
-    @condition(BOB_HAS_NICKNAME)
-    def test_bob_should_receive_error_if_he_is_already_a_nickname(self):
-        self.clients["Bob"].assert_receive('ERROR: I know you')
 
     @condition(BOB_HAS_NO_NICKNAME)
     def test_bob_should_receive_ok(self):
@@ -74,8 +70,8 @@ class BobPlagiarizerAskedNickname(TestChatServer, previous=["BobAskedNickname"])
         self.clients["Bob-plagiarizer"].assert_receive('ERROR: nickname is already used')
 
 
-class BobSentMessage(TestChatServer, previous=["Start", "BobAskedNickname", "BobSaidBye",
-                                               "AliceAskedNickname", "AliceSaidBye"]):
+class BobSentMessage(TestChatServer, previous=["BobAskedNickname",
+                                               "AliceAskedNickname"]):
 
     def input(self):
         self.clients["Bob"].send("SEND_TO;Alice;Hello")
@@ -128,17 +124,11 @@ class AliceSaidBye(TestChatServer, previous=["Start", "AliceAskedNickname",
         self.clients["Alice"].assert_receive('BYE')
 
 
-class BobSaidBye(TestChatServer, previous=["Start", "BobAskedNickname", 
-                                           "BobSentMessage", "BobSaidBye"]):
+class BobSaidBye(TestChatServer, previous=["BobAskedNickname"]):
 
     def input(self):
         self.clients["Bob"].send("BYE;;")
 
-    @condition(BOB_HAS_NO_NICKNAME)
-    def test_bob_shoult_receive_error_if_he_does_not_have_a_nickname(self):
-        self.clients["Bob"].assert_receive("ERROR: I don't know you")
-
-    @condition(BOB_HAS_NICKNAME)
     def test_a_ok(self):
         self.clients["Bob"].assert_receive('BYE')
 
