@@ -516,14 +516,15 @@ class TestServer(metaclass=MetaServerTestState):
         for command in cls.commands:
             parameters = []
             for parameter in command['cmd']:
-                if parameter.startswith('{') and parameter.endswith('}'):
-                    port = cls.virtual_ports.get(parameter)
+                for virtual_port in set(re.findall('{.+?}', parameter)):
+                    port = cls.virtual_ports.get(virtual_port)
                     if port is None:
                         port = cls.get_free_tcp_port()
-                        cls.virtual_ports[parameter] = port
-                    parameters.append(str(port))
-                else:
-                    parameters.append(parameter)
+                        cls.virtual_ports[virtual_port] = port
+
+                    parameter = parameter.replace(virtual_port, str(port))
+
+                parameters.append(parameter)
 
             cls.servers[command['name']] = cls._Server(parameters)
 
