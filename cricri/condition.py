@@ -3,6 +3,7 @@ Decorator and objects to disable/enable test method regarding previous
 executed steps.
 """
 
+
 class Condition:
     """
     Condition is class base to set of condition for condition decorator.
@@ -74,7 +75,7 @@ class Path(Condition):
         previous_steps = tuple(previous_steps)
         length = len(self.steps)
         for i in range(len(previous_steps) - length + 1):
-            if previous_steps[i : i + length] == self.steps:
+            if previous_steps[i: i + length] == self.steps:
                 return True
         return False
 
@@ -108,7 +109,8 @@ def condition(cond):
     This decorator define condition to execute the decorated test method.
     """
     if not isinstance(cond, Condition):
-        raise TypeError("First argument must be a Condition object such as Path or Newer.")
+        raise TypeError("First argument must be a Condition object such"
+                        " as Path or Newer.")
 
     def decorator(func):
         """
