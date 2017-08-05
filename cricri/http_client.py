@@ -6,7 +6,7 @@ import json
 import socket
 import time
 from urllib.parse import parse_qsl, urlencode
-from urllib.request import urlopen, Request
+from urllib.request import HTTPError, urlopen, Request
 from xml.dom.minidom import parseString
 
 from .__version__ import __version__
@@ -239,6 +239,11 @@ class HTTPClient:
             start = time.time()
             try:
                 self.response = HTTPResponse(urlopen(request, timeout=timeout))
+
+            except HTTPError as error:
+                socket_error = None
+                self.response = HTTPResponse(error)
+                break
 
             except socket.timeout as error:
                 socket_error = error
