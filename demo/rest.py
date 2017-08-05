@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
     conf = {
         'global': {
-            'server.socket_port': port,
+            'server.socket_port': port
         },
         '/': {
             'request.dispatch': cherrypy.dispatch.MethodDispatcher(),

@@ -5,6 +5,7 @@ Module to generate test scenarios from scenario step.
 from collections import defaultdict
 import socket
 from subprocess import Popen, PIPE
+from signal import Signals
 import time
 import types
 import unittest
@@ -342,6 +343,7 @@ class MetaServerTestState(MetaTestState):
                 {
                     Required("name"): str,
                     Required("cmd"): [str],
+                    Optional("kill-signal", default=Signals.SIGINT): Signals
                 }
             ]
         },
@@ -375,8 +377,12 @@ class TestServer(metaclass=MetaServerTestState):
     brackets and the OS will then pick a free port. The *timeout*, *tries* and
     *wait* keys are optional and allow you to manage TCP connection.
 
-    The *commands* must be a list containing dict with *name* and *cmd* keys.
-    cmd is list of sequence of program arguments the first element is a program.
+    The *commands* must be a list containing dict with *name*, *cmd* and
+    "kill-signal" keys.
+    *cmd* is list of sequence of program arguments the first element is a
+    program.
+    *kill-signal* should be a enumeration members of
+    :py:class: `signal.Signals`
 
     Example::
 
@@ -410,13 +416,18 @@ class TestServer(metaclass=MetaServerTestState):
         Wrap server process and provide assert methods.
         """
 
-        def __init__(self, parameters):
+        def __init__(self, parameters, kill_signal):
+            """
+            parameters - The list of Popen parameters.
+            kill_signal - The signal used to kill the process.
+            """
             self.popen = Popen(
                 parameters,
                 stdout=PIPE,
                 stderr=PIPE
             )
 
+            self.kill_signal = kill_signal
             self.selector = selectors.DefaultSelector()
             self.selector.register(self.popen.stdout,
                                    selectors.EVENT_READ,
@@ -488,9 +499,9 @@ class TestServer(metaclass=MetaServerTestState):
 
         def kill(self):
             """
-            Kill the process with SIGKILL
+            Kill the process using `kill_signal` attribute.
             """
-            self.popen.kill()
+            self.popen.send_signal(self.kill_signal)
 
     virtual_ports = {}
     clients = {}
@@ -526,7 +537,8 @@ class TestServer(metaclass=MetaServerTestState):
 
                 parameters.append(parameter)
 
-            cls.servers[command['name']] = cls._Server(parameters)
+            cls.servers[command['name']] = cls._Server(
+                parameters, command['kill-signal'])
 
         for tcp_client in cls.tcp_clients:
             port = tcp_client['port']
