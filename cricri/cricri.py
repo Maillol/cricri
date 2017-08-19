@@ -2,19 +2,19 @@
 Module to generate test scenarios from scenario step.
 """
 
-from collections import defaultdict
-import socket
-from subprocess import Popen, PIPE
-from signal import Signals
-import time
-import types
-import unittest
 import operator
 import re
 import selectors
+import signal
+import socket
+import time
+import types
+import unittest
+from collections import defaultdict
+from subprocess import PIPE, Popen
 
-from voluptuous import ALLOW_EXTRA, All, Any, Invalid, Match, \
-                       Optional, Range, Required, Schema
+from voluptuous import (ALLOW_EXTRA, All, Any, Invalid, Match, Optional, Range,
+                        Required, Schema)
 
 from .algo import walk
 from .http_client import HTTPClient
@@ -67,6 +67,62 @@ class MetaTestState(type):
 
     steps = defaultdict(dict)
     start_step = {}
+
+    class PrefixTestMethod:
+        """
+        Provide method to prefix testCase method in order to keep
+        them sorted.
+
+        You could use PrefixTestMethod.set_prefix_size(new_prefix_size)
+        if your generated testCase needs more than 99999 - default prefix size
+        is 5 - tests methods.
+        """
+
+        _count_digit = 0
+        _prefix = 'test_'
+        _suffix = '_'
+        _template = ''
+        _regex = None
+
+        @classmethod
+        def add(cls, num, name):
+            """
+            Adds prefix to name using num.
+            """
+            return cls._template.format(num, name)
+
+        @classmethod
+        def strip(cls, name):
+            """
+            Strips prefix to name.
+            """
+            return cls._regex.sub('', name)
+
+        @classmethod
+        def len(cls):
+            """
+            Returns the lenght of generated prefix.
+            """
+            return len(cls._prefix) + cls._count_digit + len(cls._suffix)
+
+        @classmethod
+        def set_prefix_size(cls, count_digit):
+            """
+            Set a new prefix size. The parameters define the
+            number of fixed digit between `test_` and `_`
+
+            set_prefix_size(4) allow prefix between `test_0000_`
+            and `test_9999_`
+            """
+            cls._count_digit = count_digit
+            cls._template = '{cls._prefix}' \
+                            '{{:>0{cls._count_digit}}}' \
+                            '{cls._suffix}{{}}'.format(cls=cls)
+            cls._regex = re.compile(
+                r'{}\d{{{}}}{}'.format(
+                    cls._prefix, cls._count_digit, cls._suffix))
+
+    PrefixTestMethod.set_prefix_size(5)
 
     @staticmethod
     def _build_test_method(input_method, names_and_methods, skipper):
@@ -166,6 +222,36 @@ class MetaTestState(type):
                                 .format(cls, mtd_name))
             attrs[key_name] = mtd
 
+    @classmethod
+    def _build_str_method(mcs, attrs):
+        """
+        Build and add `__str__` method to `attrs` dict.
+        """
+
+        sorted_test_methods = sorted(
+            attr for attr in attrs if attr.startswith('test_'))
+
+        offset = 0
+        test_method_indices = {}
+        for indice, attr in enumerate(sorted_test_methods, 1):
+            offset = max(offset, len(attr))
+            test_method_indices[attr] = indice
+        offset -= mcs.PrefixTestMethod.len()
+
+        count_test_method = len(test_method_indices)
+        template = '{{:<{}}} ({{:>0{}}}/{})'.format(
+            offset, len(str(count_test_method)), count_test_method)
+
+        def __str__(self):
+            try:
+                method_name = mcs.PrefixTestMethod.strip(self._testMethodName)
+                return template.format(
+                    method_name, test_method_indices[self._testMethodName])
+            except (KeyError, AttributeError):
+                return unittest.TestCase.__str__(self)
+
+        attrs['__str__'] = __str__
+
     def get_test_cases(cls, max_loop):
         """
         Build and return unittest.TestCase subclasses.
@@ -191,7 +277,7 @@ class MetaTestState(type):
                            and mcs.method_is_enable(attr,
                                                     previous_steps_names)))
 
-                method_name = "test_{:>04}_{}".format(
+                method_name = mcs.PrefixTestMethod.add(
                     step_num, step_name.split('.')[-1].lower())
 
                 attrs[method_name] = mcs._build_test_method(input_method,
@@ -203,6 +289,7 @@ class MetaTestState(type):
             cls._set_mtd('start_scenario', attrs, 'setUpClass')
             cls._set_mtd('stop_scenario', attrs, 'tearDownClass')
 
+            mcs._build_str_method(attrs)
             test_case_list.append(type(''.join(scenario),
                                        (unittest.TestCase,) + step.__bases__,
                                        attrs))
@@ -218,6 +305,7 @@ class MetaTestState(type):
             all tests in the package.
             """
             suite = unittest.TestSuite()
+
             for test in cls.get_test_cases(max_loop):
                 suite.addTests(loader.loadTestsFromTestCase(test))
             return suite
@@ -343,7 +431,7 @@ class MetaServerTestState(MetaTestState):
                 {
                     Required("name"): str,
                     Required("cmd"): [str],
-                    Optional("kill-signal", default=Signals.SIGINT): Signals
+                    Optional("kill-signal", default=signal.SIGINT): int
                 }
             ]
         },
@@ -564,7 +652,6 @@ class TestServer(metaclass=MetaServerTestState):
                 http_client['wait'],
                 http_client['headers'],
                 http_client['extra_headers'])
-
 
     @classmethod
     def stop_scenario(cls):

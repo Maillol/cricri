@@ -1,6 +1,6 @@
 import unittest
 from cricri import previous, Path, Newer
-from cricri.cricri import MultiDict, walk
+from cricri.cricri import MetaTestState, MultiDict, walk
 
 
 class TestPrevious(unittest.TestCase):
@@ -92,3 +92,18 @@ class TestNewer(unittest.TestCase):
         self.assertTrue(n(["A"]))
         self.assertTrue(n(["A", "Z", "B", "J", "A"]))
 
+
+class TestPrefixTestMethod(unittest.TestCase):
+    def setUp(self):
+        MetaTestState.PrefixTestMethod.set_prefix_size(4)
+
+    def test_add(self):
+        result = MetaTestState.PrefixTestMethod.add(7, 'pif_paf')
+        self.assertEqual('test_0007_pif_paf', result)
+
+    def test_strip(self):
+        result = MetaTestState.PrefixTestMethod.strip('test_0007_pifpaf')
+        self.assertEqual('pifpaf', result)
+
+    def test_len(self):
+        self.assertEqual(MetaTestState.PrefixTestMethod.len(), 10)
