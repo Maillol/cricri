@@ -589,6 +589,11 @@ class TestServer(metaclass=MetaServerTestState):
             """
             Kill the process using `kill_signal` attribute.
             """
+            self.selector.unregister(self.popen.stdout)
+            self.selector.unregister(self.popen.stderr)
+            self.popen.stderr.close()
+            self.popen.stdout.close()
+            self.selector.close()
             self.popen.send_signal(self.kill_signal)
 
     virtual_ports = {}
