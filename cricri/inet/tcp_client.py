@@ -6,11 +6,29 @@ import re
 import socket
 import time
 
+from voluptuous import (All, Optional, Range, Required)
 
-class TCPClient:
+from . import Client, port_def
+
+
+class TCPClient(Client):
     """
     Client to perform TCP request
     """
+
+    attr_name = 'tcp_clients'
+
+    @staticmethod
+    def validator():
+        """
+        Return callable to validate __init__ attribute
+        """
+        return {
+            Required("port"): port_def,
+            Optional("timeout", default=2): Range(0, min_included=False),
+            Optional("tries", default=3): All(int, Range(0, min_included=False)),
+            Optional("wait", default=0.125): Range(0, min_included=False)
+        }
 
     def __init__(self, port, timeout, tries, wait):
         self.socket = socket.socket(socket.AF_INET,

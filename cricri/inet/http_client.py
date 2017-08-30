@@ -6,10 +6,13 @@ import json
 import socket
 import time
 from urllib.parse import parse_qsl, urlencode
-from urllib.request import HTTPError, urlopen, Request
+from urllib.request import HTTPError, Request, urlopen
 from xml.dom.minidom import parseString
 
-from .__version__ import __version__
+from voluptuous import (All, Any, Optional, Range, Required, Schema)
+
+from . import Client, port_def
+from ..__version__ import __version__
 
 
 class NoResponseProvidedError(Exception):
@@ -117,7 +120,7 @@ class HTTPResponse:
         return super().__getattribute__(name)
 
 
-class HTTPClient:
+class HTTPClient(Client):
     """
     Client to performe HTTP request.
     """
@@ -131,6 +134,24 @@ class HTTPClient:
         'application/x-www-form-urlencoded': urlencode,
         'text/plain': str
     }
+
+    attr_name = 'http_clients'
+
+    @staticmethod
+    def validator():
+        """
+        Return callable to validate __init__ attribute
+        """
+
+        return {
+            Required("host"): str,
+            Required("port"): port_def,
+            Optional("timeout", default=2): Range(0, min_included=False),
+            Optional("tries", default=3): All(int, Range(0, min_included=False)),
+            Optional("wait", default=1): Range(0, min_included=False),
+            Optional("headers", default=[]): list,
+            Optional("extra_headers", default=None): Any(list, None)
+        }
 
     def __init__(self, host, port, timeout, tries,
                  wait, headers, extra_headers=None):

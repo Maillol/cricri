@@ -2,23 +2,19 @@
 Module to generate test scenarios from scenario step.
 """
 
-import operator
 import re
-import selectors
 import signal
 import socket
-import time
 import types
 import unittest
 from collections import defaultdict
-from subprocess import PIPE, Popen
 
-from voluptuous import (ALLOW_EXTRA, All, Any, Invalid, Match, Optional, Range,
-                        Required, Schema)
+from voluptuous import (ALLOW_EXTRA, Invalid, Optional, Required, Schema)
 
 from .algo import walk
-from .http_client import HTTPClient
-from .tcp_client import TCPClient
+from .inet import Client, Server
+from .inet.http_client import HTTPClient
+from .inet.tcp_client import TCPClient
 
 __all__ = ['MetaServerTestState', 'MetaTestState', 'TestServer', 'TestState']
 
@@ -227,7 +223,6 @@ class MetaTestState(type):
         """
         Build and add `__str__` method to `attrs` dict.
         """
-
         sorted_test_methods = sorted(
             attr for attr in attrs if attr.startswith('test_'))
 
@@ -396,37 +391,51 @@ class TestState(metaclass=MetaTestState):
 
 class MetaServerTestState(MetaTestState):
     """
-    MetaTestState designed to test tcp server.
+    MetaTestState designed to test servers.
     """
 
-    _port_def = Any(Match(r"\{.+\}$",
-                          "int or string starts with '{' and ends with '}'"),
-                    int)
+    _class_clients = {}
 
-    valid_attributes = Schema(
-        {
-            Optional("http_clients", 'required class attribute'): [
-                {
-                    Required("name"): str,
-                    Required("host"): str,
-                    Required("port"): _port_def,
-                    Optional("timeout", default=2): Range(0, min_included=False),
-                    Optional("tries", default=3): All(int, Range(0, min_included=False)),
-                    Optional("wait", default=1): Range(0, min_included=False),
-                    Optional("headers", default=[]): list,
-                    Optional("extra_headers", default=None): Any(list, None)
-                }
-            ],
+    @classmethod
+    def bind_class_client(mcs, class_client):
+        """
+        Allow each `TestServer` subclass to manage a new `Client`.
+        """
+        if not issubclass(class_client, Client):
+            raise TypeError('First parameters should be a `Client` subclass')
 
-            Optional("tcp_clients", 'required class attribute'): [
-                {
-                    Required("name"): str,
-                    Required("port"): _port_def,
-                    Optional("timeout", default=2): Range(0, min_included=False),
-                    Optional("tries", default=3): All(int, Range(0, min_included=False)),
-                    Optional("wait", default=0.125): Range(0, min_included=False)
-                }
-            ],
+        client_already_bound = mcs._class_clients.get(class_client.attr_name)
+        if client_already_bound:
+            raise ValueError(
+                'attribute `{clt.attr_name}` already is bound to'
+                ' `{clt_bound.__qualname__}` client. If you want bind'
+                ' `{clt.__qualname__}` to an other attribute, set'
+                ' `{clt.__qualname__}.attr_name` with an other value than'
+                ' {clt.attr_name}'.format(clt=class_client,
+                                          clt_bound=client_already_bound))
+
+        mcs._class_clients[class_client.attr_name] = class_client
+
+    @classmethod
+    def forget_client(mcs, attr_name_or_client):
+        """
+        Forget a `Client`.
+
+        Args:
+            attr_name_or_client: The client or the attr_name bound to forget.
+        """
+        if isinstance(attr_name_or_client, str):
+            mcs._class_clients.pop(attr_name_or_client)
+        else:
+            mcs._class_clients.pop(attr_name_or_client.attr_name)
+
+    @classmethod
+    def _build_attributes_validator(mcs):
+        """
+        Returns validator to validate the sub-classes attributes.
+        """
+
+        valid_attributes = {
             Required("commands", 'required class attribute'): [
                 {
                     Required("name"): str,
@@ -434,15 +443,29 @@ class MetaServerTestState(MetaTestState):
                     Optional("kill-signal", default=signal.SIGINT): int
                 }
             ]
-        },
-        extra=ALLOW_EXTRA
-    )
+        }
+
+        for attr_name, class_client in mcs._class_clients.items():
+            client_validator = {
+                Required("name"): str,
+            }
+            client_validator.update(class_client.validator())
+
+            key = Optional(attr_name, 'required class attribute')
+            valid_attributes[key] = [client_validator]
+
+        return Schema(valid_attributes, extra=ALLOW_EXTRA)
 
     def __new__(mcs, cls_name, bases, attrs, previous=None, start=False):
-
         if bases and TestServer in bases:
+
+            for attr_name in mcs._class_clients:
+                attrs.setdefault(attr_name, [])
+
+            validate_attributes = mcs._build_attributes_validator()
             try:
-                attrs = mcs.valid_attributes(attrs)
+                attrs = validate_attributes(attrs)
+
             except Invalid as error:
                 msg = "{} @ {}.{}".format(error.error_message,
                                           cls_name, error.path[0])
@@ -451,8 +474,12 @@ class MetaServerTestState(MetaTestState):
 
                 raise AttributeError(msg)
 
-        return super().__new__(mcs, cls_name, bases, attrs,
-                               previous, start)
+        return MetaTestState.__new__(mcs, cls_name, bases, attrs, previous,
+                                     start)
+
+
+MetaServerTestState.bind_class_client(HTTPClient)
+MetaServerTestState.bind_class_client(TCPClient)
 
 
 class TestServer(metaclass=MetaServerTestState):
@@ -495,107 +522,7 @@ class TestServer(metaclass=MetaServerTestState):
             ]
     """
 
-    http_clients = []
-    tcp_clients = []
     commands = []
-
-    class _Server:
-        """
-        Wrap server process and provide assert methods.
-        """
-
-        def __init__(self, parameters, kill_signal):
-            """
-            parameters - The list of Popen parameters.
-            kill_signal - The signal used to kill the process.
-            """
-            self.popen = Popen(
-                parameters,
-                stdout=PIPE,
-                stderr=PIPE
-            )
-
-            self.kill_signal = kill_signal
-            self.selector = selectors.DefaultSelector()
-            self.selector.register(self.popen.stdout,
-                                   selectors.EVENT_READ,
-                                   ('stdout', "server-2"))
-            self.selector.register(self.popen.stderr,
-                                   selectors.EVENT_READ,
-                                   ('stderr', "server-3"))
-
-        def assert_stdout_is(self, expected, timeout):
-            """
-            Test that server logs *expected* on the stdout before *timeout*
-            """
-            self._assert_output(operator.eq, '{read} != {expected}',
-                                'stdout', expected, timeout)
-
-        def assert_stderr_is(self, expected, timeout):
-            """
-            Test that server logs *expected* on the stderr before *timeout*
-            """
-            self._assert_output(operator.eq, '{read} != {expected}',
-                                'stderr', expected, timeout)
-
-        def assert_stdout_regex(self, regex, timeout):
-            """
-            Test that server logs on stdout before *timeout*
-            and message matches *regex*
-            """
-            self._assert_output(lambda a, b: re.search(b, a),
-                                "{read} doesn't match {expected}",
-                                'stdout', regex, timeout)
-
-        def assert_stderr_regex(self, regex, timeout):
-            """
-            Test that server logs on stderr before *timeout*
-            and message matches *regex*
-            """
-            self._assert_output(lambda a, b: re.search(b, a),
-                                "{read} doesn't match {expected}",
-                                'stderr', regex, timeout)
-
-        def _assert_output(self, test_func, assert_msg,
-                           output, expected, timeout):
-            read = None
-            start = time.time()
-            not_expected_reads = b''
-            while read is None:
-                keys = self.selector.select(timeout=timeout)
-                if not keys:
-                    break
-
-                for key, _ in keys:
-                    if key.data[0] == output:
-                        read = key.fileobj.read1(4096)
-                        if test_func(read.decode('utf-8'), expected):
-                            return
-
-                        not_expected_reads += read
-                        read = None
-                        break
-
-                timeout -= (time.time() - start)
-
-            if read is None:
-                raise AssertionError("Timeout: No data received")
-            else:
-                raise AssertionError(
-                    assert_msg.format(expected=expected,
-                                      read=not_expected_reads.decode('utf-8')))
-
-        def kill(self):
-            """
-            Kill the process using `kill_signal` attribute.
-            """
-            self.selector.unregister(self.popen.stdout)
-            self.selector.unregister(self.popen.stderr)
-            self.popen.stderr.close()
-            self.popen.stdout.close()
-            self.selector.close()
-            self.popen.send_signal(self.kill_signal)
-
     virtual_ports = {}
     clients = {}
     servers = {}
@@ -630,33 +557,19 @@ class TestServer(metaclass=MetaServerTestState):
 
                 parameters.append(parameter)
 
-            cls.servers[command['name']] = cls._Server(
+            cls.servers[command['name']] = Server(
                 parameters, command['kill-signal'])
 
-        for tcp_client in cls.tcp_clients:
-            port = tcp_client['port']
-            if port.startswith('{') and port.endswith('}'):
-                port = cls.virtual_ports[port]
+        for attr_name, class_client in type(cls)._class_clients.items():
+            for client_init_values in getattr(cls, attr_name):
+                client_init_values = client_init_values.copy()
+                port = client_init_values.get('port')
+                if port is not None:
+                    if isinstance(port, str) and port.startswith('{') and port.endswith('}'):
+                        client_init_values['port'] = cls.virtual_ports[port]
 
-            cls.clients[tcp_client['name']] = TCPClient(
-                port,
-                tcp_client['timeout'],
-                tcp_client['tries'],
-                tcp_client['wait'])
-
-        for http_client in cls.http_clients:
-            port = http_client['port']
-            if port.startswith('{') and port.endswith('}'):
-                port = cls.virtual_ports[port]
-
-            cls.clients[http_client['name']] = HTTPClient(
-                http_client['host'],
-                port,
-                http_client['timeout'],
-                http_client['tries'],
-                http_client['wait'],
-                http_client['headers'],
-                http_client['extra_headers'])
+                client_name = client_init_values.pop('name')
+                cls.clients[client_name] = class_client(**client_init_values)
 
     @classmethod
     def stop_scenario(cls):

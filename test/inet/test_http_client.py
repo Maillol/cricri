@@ -1,8 +1,8 @@
 import unittest
 from io import BytesIO
 import http.client
-from cricri.http_client import (HTTPResponse, 
-                                NoResponseProvidedError)
+from cricri.inet.http_client import (HTTPResponse, 
+                                     NoResponseProvidedError)
 
 
 class MockSocket:
