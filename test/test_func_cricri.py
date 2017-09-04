@@ -137,9 +137,9 @@ class TestPreviousOnInputMethod(SpyTestState):
         """generated tests must be subclass of BaseTestState"""
         cls = type(self)
         self.assertTrue(issubclass(cls.test_cases['ABC'],
-                        type(self).BaseTestState))
+                                   type(self).BaseTestState))
         self.assertTrue(issubclass(cls.test_cases['AC'],
-                        type(self).BaseTestState))
+                                   type(self).BaseTestState))
 
     def test_two_tests_are_generated(self):
         cls = type(self)
@@ -331,7 +331,6 @@ class TestInputWithCondition(SpyTestState):
         def test_1(self):
             spy('D.test_1')
 
-
     def test_execute_ab1cd(self):
         self.assertExec('AB1CD',
                         ("A.test_1",
@@ -370,6 +369,28 @@ class TestShouldRaiseIfCannotChooseInput(unittest.TestCase):
             self.BaseTestState.get_test_cases(0)
 
         self.assertEqual(str(cm.exception),
-                        'Multiple inputs methods are valid in '
-                        'TestShouldRaiseIfCannotChooseInput.B')
+                         'Multiple inputs methods are valid in '
+                         'TestShouldRaiseIfCannotChooseInput.B')
 
+
+class TestShouldRaiseIfPreviousStepDoesntExist(unittest.TestCase):
+
+    class BaseTestState(TestState):
+        ...
+
+    class A(BaseTestState, start=True):
+        def input(self):
+            pass
+
+    class B(BaseTestState, previous=['X']):
+        def input(self):
+            pass
+
+    def test_should_raise(self):
+        with self.assertRaises(ValueError) as cm:
+            self.BaseTestState.get_test_cases(0)
+
+        self.assertEqual(str(cm.exception),
+                         "The previous `X` defined in"
+                         " TestShouldRaiseIfPreviousStepDoesntExist.B class"
+                         " doesn't exist")

@@ -160,9 +160,14 @@ class MetaTestState(type):
                              "define the first '{}' subclass."
                              .format(subcls.__qualname__))
 
+        step_classes_from_name = mcs.steps[subcls]
         step_from_previous = defaultdict(list)
-        for step in mcs.steps[subcls].values():
+        for step in step_classes_from_name.values():
             for previous_step in step.previous:
+                if previous_step not in step_classes_from_name:
+                    raise ValueError("The previous `{}` defined in {}"
+                                     " class doesn't exist".
+                                     format(previous_step, step.__qualname__))
                 step_from_previous[previous_step].append(step.__name__)
 
         return walk(step_from_previous, start_step, max_loop)
@@ -317,6 +322,12 @@ class MetaTestState(type):
                 cls.previous = []
             else:
                 cls.previous = previous
+
+            for step in cls.previous:
+                if not isinstance(step, str):
+                    raise TypeError('The element of previous should be a str'
+                                    ' (`{}` found in `{}`)'.
+                                    format(step, cls_name))
 
             for attr_name, attr in attrs.items():
                 if attr_name == 'inputs':
