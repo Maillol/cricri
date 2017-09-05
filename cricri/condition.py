@@ -3,6 +3,8 @@ Decorator and objects to disable/enable test method regarding previous
 executed steps.
 """
 
+import warnings
+
 
 class Condition:
     """
@@ -69,6 +71,10 @@ class Path(Condition):
     """
 
     def __init__(self, *steps):
+        for step in steps:
+            if not isinstance(step, str):
+                raise TypeError('previous() parameters should be str (got {})'
+                                .format(type(step).__name__))
         self.steps = tuple(steps)
 
     def __call__(self, previous_steps):
@@ -104,6 +110,24 @@ class Newer(Condition):
         return index_1 > index_2
 
 
+class Previous(Condition):
+    """
+    True if `steps` contains the last executed step.
+    """
+
+    def __init__(self, *steps):
+        for step in steps:
+            if not isinstance(step, str):
+                raise TypeError('previous() parameters should be str (got {})'
+                                .format(type(step).__name__))
+        self.steps = set(steps)
+
+    def __call__(self, previous_steps):
+        if not previous_steps:
+            return False
+        return previous_steps[-1] in self.steps
+
+
 def condition(cond):
     """
     This decorator define condition to execute the decorated test method.
@@ -122,22 +146,31 @@ def condition(cond):
     return decorator
 
 
-def previous(previous_steps):
+def previous(*steps):
     """
-    This decorator define previous steps of decorated input methods.
-    You can use previous to decorate a test method.
-
-    previous_steps - list of previous TestState subclasses names.
+    This decorator is shortcut to @condition(Previous(...))
     """
-    if not isinstance(previous_steps, list):
-        raise TypeError('previous() take list of class names (got {})'
-                        .format(type(previous_steps).__name__))
+    if len(steps) == 1 and isinstance(steps[0], list):
+        warnings.warn("@previous decorator should take one or more"
+                      " arguments instead of list."
+                      " Please use @previous({args})"
+                      " instead of @previous([{args}])".format(
+                          args=', '.join(repr(e) for e in steps[0])),
+                      DeprecationWarning, 2)
+        steps = steps[0]
 
-    def decorator(func):
-        """
-        Add previous_steps attribut to func
-        """
-        func.previous_steps = previous_steps
-        return func
+    return condition(Previous(*steps))
 
-    return decorator
+
+def newer(step_1, step_2):
+    """
+    This decorator is shortcut to @condition(Newer(...))
+    """
+    return condition(Newer(step_1, step_2))
+
+
+def path(*steps):
+    """
+    This decorator is shortcut to @condition(Path(...))
+    """
+    return condition(Path(*steps))

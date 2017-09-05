@@ -9,7 +9,7 @@ import types
 import unittest
 from collections import defaultdict
 
-from voluptuous import (ALLOW_EXTRA, Invalid, Optional, Required, Schema)
+from voluptuous import ALLOW_EXTRA, Invalid, Optional, Required, Schema
 
 from .algo import walk
 from .inet import Client, Server
@@ -179,13 +179,7 @@ class MetaTestState(type):
         """
         condition = getattr(mtd, 'condition',
                             lambda _steps: True)
-        if condition(previous_steps):
-            if not hasattr(mtd, 'previous_steps'):
-                return True
-            if previous_steps:
-                return previous_steps[-1] in mtd.previous_steps
-            return True
-        return False
+        return condition(previous_steps)
 
     @staticmethod
     def _select_input_method(inputs, previous_steps):
@@ -328,12 +322,6 @@ class MetaTestState(type):
                     raise TypeError('The element of previous should be a str'
                                     ' (`{}` found in `{}`)'.
                                     format(step, cls_name))
-
-            for attr_name, attr in attrs.items():
-                if attr_name == 'inputs':
-                    for input_method in attr:
-                        if not hasattr(input_method, 'previous_steps'):
-                            input_method.previous_steps = cls.previous
 
             base = next(base for base in bases
                         if isinstance(base, mcs))

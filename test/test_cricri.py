@@ -1,19 +1,10 @@
 import unittest
-from cricri import previous, Path, Newer
-from cricri.cricri import MetaTestState, MultiDict, walk, MetaServerTestState, TestServer
-from cricri.inet import Client
+
 import voluptuous
 
-
-class TestPrevious(unittest.TestCase):
-
-    def test_decorate_function(self):
-
-        @previous(['A', 'B'])
-        def foo():
-            ...
-
-        self.assertEqual(foo.previous_steps, ['A', 'B'])
+from cricri.cricri import (MetaServerTestState, MetaTestState, MultiDict,
+                           TestServer, walk)
+from cricri.inet import Client
 
 
 class TestMultiDict(unittest.TestCase):
@@ -30,69 +21,6 @@ class TestMultiDict(unittest.TestCase):
         self.multidict['a'] = 1
         self.multidict['a'] = 2
         self.assertEqual(self.multidict, dict(inputs=[], a=2))
-
-
-class TestPath(unittest.TestCase):
-
-    def test_call(self):
-        p = Path("A", "B")
-        self.assertTrue(p(["A", "B"]))
-        self.assertTrue(p(["A", "B", "C"]))
-        self.assertTrue(p(["Z", "A", "B"]))
-        self.assertTrue(p(["Z", "A", "B", "C"]))
-        self.assertFalse(p(["A"]))
-        self.assertFalse(p(["A", "C"]))
-        self.assertFalse(p(["A", "C", "B"]))
-
-    def test_not_call(self):
-        p = - Path("A", "B")
-        self.assertFalse(p(["A", "B"]))
-        self.assertFalse(p(["A", "B", "C"]))
-        self.assertFalse(p(["Z", "A", "B"]))
-        self.assertFalse(p(["Z", "A", "B", "C"]))
-        self.assertTrue(p(["A"]))
-        self.assertTrue(p(["A", "C"]))
-        self.assertTrue(p(["A", "C", "B"]))
-
-    def test_and_call(self):
-        p = Path("A", "B") & Path("C", "D")
-        self.assertTrue(p(["A", "B", "C", "D"]))
-        self.assertTrue(p(["Z", "A", "B", "M", "C", "D", "N"]))
-        self.assertFalse(p(["A", "B"]))
-        self.assertFalse(p(["C", "D"]))
-
-    def test_or_call(self):
-        p = Path("A", "B") | Path("C", "D")
-        self.assertTrue(p(["A", "B", "C", "D"]))
-        self.assertTrue(p(["Z", "A", "B", "M", "C", "D", "N"]))
-        self.assertTrue(p(["A", "B"]))
-        self.assertTrue(p(["C", "D"]))
-        self.assertFalse(p(["B", "C"]))
-
-
-class TestNewer(unittest.TestCase):
-
-    def test_call(self):
-        n = Newer("A", "B")
-        self.assertTrue(n(["A", "B"]))
-        self.assertTrue(n(["A", "Z", "B"]))
-        self.assertTrue(n(["B", "A", "Z", "B"]))
-        self.assertTrue(n(["X", "B"]))
-        self.assertTrue(n(["B"]))
-        self.assertFalse(n([]))
-        self.assertFalse(n(["A"]))
-        self.assertFalse(n(["A", "Z", "B", "J", "A"]))
-
-    def test_not_call(self):
-        n = - Newer("A", "B")
-        self.assertFalse(n(["A", "B"]))
-        self.assertFalse(n(["A", "Z", "B"]))
-        self.assertFalse(n(["B", "A", "Z", "B"]))
-        self.assertFalse(n(["X", "B"]))
-        self.assertFalse(n(["B"]))
-        self.assertTrue(n([]))
-        self.assertTrue(n(["A"]))
-        self.assertTrue(n(["A", "Z", "B", "J", "A"]))
 
 
 class TestPrefixTestMethod(unittest.TestCase):
