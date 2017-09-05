@@ -52,6 +52,36 @@ class MultiDict(dict):
             self[new_key].append(value)
 
 
+def to_underscore(name):
+    """
+    >>> to_underscore("FooBar")
+    'foo_bar'
+    >>> to_underscore("HTTPServer")
+    'http_server'
+    """
+    if not name:
+        return name
+    iterator = iter(name)
+    out = [next(iterator).lower()]
+    last_is_upper = True
+    parse_abbreviation = False
+    for char in iterator:
+        if char.isupper():
+            if last_is_upper:
+                parse_abbreviation = True
+                out.append(char.lower())
+            else:
+                out.append('_' + char.lower())
+            last_is_upper = True
+        else:
+            if parse_abbreviation:
+                out.insert(-1, '_')
+                parse_abbreviation = False
+            out.append(char)
+            last_is_upper = False
+    return "".join(out)
+
+
 class MetaTestState(type):
     """
     Generate all possible test scenarios from TestState subclass.
@@ -240,7 +270,8 @@ class MetaTestState(type):
             try:
                 method_name = mcs.PrefixTestMethod.strip(self._testMethodName)
                 return template.format(
-                    method_name, test_method_indices[self._testMethodName])
+                    method_name.replace('_', ' '),
+                    test_method_indices[self._testMethodName])
             except (KeyError, AttributeError):
                 return unittest.TestCase.__str__(self)
 
@@ -272,7 +303,7 @@ class MetaTestState(type):
                                                     previous_steps_names)))
 
                 method_name = mcs.PrefixTestMethod.add(
-                    step_num, step_name.split('.')[-1].lower())
+                    step_num, to_underscore(step_name.split('.')[-1]))
 
                 attrs[method_name] = mcs._build_test_method(input_method,
                                                             test_methods,
