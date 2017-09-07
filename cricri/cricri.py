@@ -324,16 +324,14 @@ class MetaTestState(type):
         """
         Build and return load_tests function.
         """
-        def load_tests(loader, tests, pattern):
+        def load_tests(loader, standard_tests, pattern):
             """
             unittest hook responsible for loading
             all tests in the package.
             """
-            suite = unittest.TestSuite()
-
             for test in cls.get_test_cases(max_loop):
-                suite.addTests(loader.loadTestsFromTestCase(test))
-            return suite
+                standard_tests.addTests(loader.loadTestsFromTestCase(test))
+            return standard_tests
 
         return load_tests
 
