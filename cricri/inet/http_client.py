@@ -2,6 +2,7 @@
 Utility to test HTTP server
 """
 
+import base64
 import json
 import socket
 import time
@@ -9,6 +10,7 @@ from urllib.parse import parse_qsl, urlencode
 from urllib.request import HTTPError, Request, urlopen
 from xml.dom.minidom import parseString
 
+import attr
 from voluptuous import (All, Any, Optional, Range, Required, Schema)
 
 from . import Client, port_def
@@ -120,6 +122,12 @@ class HTTPResponse:
         return super().__getattribute__(name)
 
 
+@attr.s
+class BasicAuth:
+    user = attr.ib()
+    passwd = attr.ib()
+
+
 class HTTPClient(Client):
     """
     Client to performe HTTP request.
@@ -213,7 +221,7 @@ class HTTPClient(Client):
         return serializer
 
     def request(self, method, path, headers=None,
-                timeout=None, data=NO_CONTENT):
+                timeout=None, data=NO_CONTENT, auth=None):
         """
         Performe HTTP request to *path*
 
@@ -236,6 +244,9 @@ class HTTPClient(Client):
                      content-type define in the HTTP headers. You can change
                      this behavior updating *serializers* class attribute.
         :type data: object
+
+        :param auth: HTTP authentication
+        :type data: BasicAuth
         """
 
         if headers is None:
@@ -254,6 +265,14 @@ class HTTPClient(Client):
         if data is not self.NO_CONTENT:
             content = self._get_serializer(headers)(data)
             request.data = content.encode('utf-8')
+
+        if auth is not None:
+            raw = '{user}:{passwd}'.format(**attr.asdict(auth))
+            request.add_unredirected_header(
+                'Authorization',
+                'Basic {}'.format(base64.b64encode(
+                    raw.encode()).decode('ascii'))
+            )
 
         self.response = None
         for _ in range(self.tries):

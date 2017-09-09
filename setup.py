@@ -37,5 +37,5 @@ setup(
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)'
     ],
     python_requires='>=3.4',
-    install_requires=['voluptuous']
+    install_requires=['voluptuous', 'attrs']
 )
