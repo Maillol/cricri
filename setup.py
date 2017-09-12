@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import find_packages, setup
 import sys
 import os
 sys.path.insert(0, './cricri')
@@ -20,9 +20,13 @@ setup(
     keywords='scenario test generator unittest case',
     author='Vincent Maillol',
     author_email='vincent.maillol@gmail.com',
-    url='https://github.com/maillol/scenario',
-    license='GPLv3', 
-    packages=['cricri'],
+    url='https://github.com/maillol/cricri',
+    license='GPLv3',
+    packages=['cricri'] + [
+        'cricri.{}'.format(subpackage)
+        for subpackage
+        in find_packages(where='./cricri')
+    ],
     classifiers=[
         development_status,
         'Intended Audience :: Developers',

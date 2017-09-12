@@ -111,7 +111,7 @@ and:
     |  machine.m2()
     |  test_c()
 
-For more example, see `demo directory <https://github.com/Maillol/scenario/tree/master/demo>`_
+For more example, see `demo directory <https://github.com/Maillol/cricri/tree/master/demo>`_
 
 
 Documentation:

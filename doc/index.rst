@@ -21,7 +21,7 @@ Installing with pip::
 
 Installing with git::
 
-    git clone https://github.com/Maillol/scenario.git cricri
+    git clone https://github.com/Maillol/cricri.git cricri
     cd cricri
     python3 setup.py install
 
@@ -76,8 +76,8 @@ Each *BaseTestState* subclass defines a scenario step.
 when *Create* step is done and *Sort* step can be executed when *Create* or *Reverse* step is done.
 
 This three steps define two scenario:
-    - Create, Reverse and Sort list.
     - Create and Sort list.
+    - Create, Reverse and Sort list.
 
 Each step has input method. This method is called before test methods of step.
 
@@ -89,11 +89,11 @@ To run this script, use unittest command-line interface::
 
 You will see the following output::
 
-    test_0000_create (cricri.CreateReverseSort) ... ok
-    test_0001_reverse (cricri.CreateReverseSort) ... ok
-    test_0002_sort (cricri.CreateReverseSort) ... ok
-    test_0000_create (cricri.CreateSort) ... ok
-    test_0001_sort (cricri.CreateSort) ... ok
+    create (1/2) ... ok
+    sort   (2/2) ... ok
+    create  (1/3) ... ok
+    reverse (2/3) ... ok
+    sort    (3/3) ... ok
 
     ----------------------------------------------------------------------
     Ran 5 tests in 0.001s
@@ -206,7 +206,7 @@ You can create HTTP client using http_clients attribute in a *TestServer* subcla
 http_client available parameter
 -------------------------------
 
-.. automethod:: cricri.http_client.HTTPClient.__init__
+.. automethod:: cricri.inet.http_client.HTTPClient.__init__
 
 Your HTTP clients are instantiate in *clients* class attribute and you may use them in the *input
 method*::
@@ -220,12 +220,12 @@ method*::
 HTTPClient methods
 ------------------
 
-.. automethod:: cricri.http_client.HTTPClient.request
-.. automethod:: cricri.http_client.HTTPClient.get
-.. automethod:: cricri.http_client.HTTPClient.post
-.. automethod:: cricri.http_client.HTTPClient.put
-.. automethod:: cricri.http_client.HTTPClient.delete
-.. automethod:: cricri.http_client.HTTPClient.patch
+.. automethod:: cricri.inet.http_client.HTTPClient.request
+.. automethod:: cricri.inet.http_client.HTTPClient.get
+.. automethod:: cricri.inet.http_client.HTTPClient.post
+.. automethod:: cricri.inet.http_client.HTTPClient.put
+.. automethod:: cricri.inet.http_client.HTTPClient.delete
+.. automethod:: cricri.inet.http_client.HTTPClient.patch
 
 Response testing
 ----------------
@@ -233,10 +233,10 @@ Response testing
 The client stores HTTP response in response attribute using HTTPResponse
 object. This HTTPResponse object provide methods useful for test server.
 
-.. automethod:: cricri.http_client.HTTPResponse.assert_header_has
-.. automethod:: cricri.http_client.HTTPResponse.assert_header_is
-.. automethod:: cricri.http_client.HTTPResponse.assert_status_code
-.. automethod:: cricri.http_client.HTTPResponse.assert_reason
+.. automethod:: cricri.inet.http_client.HTTPResponse.assert_header_has
+.. automethod:: cricri.inet.http_client.HTTPResponse.assert_header_is
+.. automethod:: cricri.inet.http_client.HTTPResponse.assert_status_code
+.. automethod:: cricri.inet.http_client.HTTPResponse.assert_reason
 
 Example::
 
@@ -254,11 +254,14 @@ Example::
 
             self.assertCountEqual(content, expected)
 
-previous decorator
-==================
 
-The previous decorator allows you to have a conditional execution of input or test method.
-this function takes a list of steps names::
+condition decorator
+===================
+
+The **condition** decorator allows you to have a conditional execution of test method.
+this function takes a Condition objects such as Previous or Path.
+
+Example::
 
 
     class B1(BaseTestState):
@@ -269,60 +272,30 @@ this function takes a list of steps names::
 
     class C(BaseTestState, previous=['B1', 'B2']):
 
-        @previous(['B1'])  # Called when previous step is B1
+        @condition(Previous(['B1']))  # Called when previous step is B1
         def input(self):
             ...
 
-        @previous(['B2'])  # Called when previous step is B2
+        @condition(Previous(['B2'])  # Called when previous step is B2
         def input(self):
             ...
 
-        @previous(['B1'])  # Called when previous step is B1
+        @condition(Previous(['B1'])  # Called when previous step is B1
         def test_1(self):
             ...
 
-        @previous(['B2'])  # Called when previous step is B2
+        @condition(Previous(['B2'])  # Called when previous step is B2
         def test_2(self):
             ...
 
 
-Note that TestState subsubclass can have severals input method if previous decorator is used.
+Note that TestState subsubclass can have several input methods if **condition** decorator is used.
 
-
-condition decorator
-===================
-
-The conditional decorator allows you to have a conditional execution of test method.
-this function takes a Condition objects such as Path or Newer.
-
-Example::
-
-
-    class Connect(BaseTestState, start=True, previous=['Disconnect']):
-        ...
-
-    class Disconnect(BaseTestState, previous=['Connect']):
-        ...
-
-    class PrepareMsg(BaseTestState, previous=['Disconnect', 'Connect']):
-        ...
-
-    class Send(BaseTestState, previous=['PrepareMsg']):
-
-        # Called when Connect call is newer than Disconnect call.
-        @condition(Newer('Disconnect', 'Connect'))
-        def test_error(self):
-            ...
-
-        # Called when Disconnect call is newer than Connect call.
-        @condition(Newer('Connect', 'Disconnect'))
-        def test_msg_send(self):
-            ...
 
 Condition object
 ================
 
-The Conditions objets are used in condition decorator.
+The Conditions objets are used in **condition** decorator.
 
 You can combine Condition objects using operator.
 
@@ -338,6 +311,31 @@ You can combine Condition objects using operator.
 
 Built-in Condition
 ------------------
+
+Previous
+~~~~~~~~
+
+Previous(step [,step2 [...]]) is enable if last executed step is in given steps.
+
+Example:
+
++-----------------------------------------------+
+|       @condition(Previous("I", "J"))          |
++----------------+------------------------------+
+| Executed steps | Decorated method is executed |
++================+==============================+
+| K, I, J        | True                         |
++----------------+------------------------------+
+| K, J, I        | True                         |
++----------------+------------------------------+
+| J, I, K        | False                        |
++----------------+------------------------------+
+| I, J, K        | False                        |
++----------------+------------------------------+
+| J              | True                         |
++----------------+------------------------------+
+| I              | True                         |
++----------------+------------------------------+
 
 Path
 ~~~~
@@ -384,6 +382,9 @@ Example:
 +----------------+------------------------------+
 | K, J           | True                         |
 +----------------+------------------------------+
+| K, I           | False                        |
++----------------+------------------------------+
+
 
 How to create a custom Condition
 --------------------------------
@@ -404,4 +405,18 @@ Here is a Condition wich is enable when step appears a given number of times::
             previous_steps = tuple(previous_steps)
             return previous_steps.count(self.step) ==  self.count
 
+Shortcut
+========
+
+Cricri provides shortcut decorators:
+
++---------------------------------+--------------------------------------------+
+| shortcut                        | means                                      |
++=================================+============================================+
+| @previous(step [,step2 [...]])  | @conditon(Previous(step [,step2 [...]]))   |
++---------------------------------+--------------------------------------------+
+| @path(step [,step2 [...]])      | @conditon(Path(step [,step2 [...]]))       |
++---------------------------------+--------------------------------------------+
+| @newer(step1, step2)            | @conditon(Newer(step1, step2))             |
++---------------------------------+--------------------------------------------+
 
