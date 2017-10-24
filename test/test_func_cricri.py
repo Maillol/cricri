@@ -44,6 +44,53 @@ class SpyTestState(unittest.TestCase):
                                  'Actual: {}\n'.format(calls, spy.mock_calls))
 
 
+class TestCaseTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        spy('TestCaseTest.setUpClass')
+
+    @classmethod
+    def tearDownClass(cls):
+        spy('TestCaseTest.tearDownClass')
+        super().tearDownClass()
+
+
+class TestCustomTestCase(SpyTestState):
+
+
+    class BaseTestState(TestState):
+        TestCase = TestCaseTest
+
+        @classmethod
+        def start_scenario(cls):
+            spy('BaseTestState.start_scenario')
+
+        @classmethod
+        def stop_scenario(cls):
+            spy('BaseTestState.stop_scenario')
+        
+    class A(BaseTestState, start=True):
+        def input(self):
+            pass
+
+    class B(BaseTestState, previous=['A']):
+        def input(self):
+            pass
+
+        def test_1(self):
+            spy("B1.test")
+
+    def test_execute_setup_teardown(self):
+        self.assertExec('AB', (
+            "TestCaseTest.setUpClass",
+            "BaseTestState.start_scenario",
+            "B1.test",
+            "BaseTestState.stop_scenario",
+            "TestCaseTest.tearDownClass",
+        ))
+
+
 class TestPreviousOnTestMethod(SpyTestState):
 
     class BaseTestState(TestState):
@@ -394,3 +441,4 @@ class TestShouldRaiseIfPreviousStepDoesntExist(unittest.TestCase):
                          "The previous `X` defined in"
                          " TestShouldRaiseIfPreviousStepDoesntExist.B class"
                          " doesn't exist")
+
