@@ -316,7 +316,7 @@ class MetaTestState(type):
 
             mcs._build_str_method(attrs)
             test_case_list.append(type(''.join(scenario),
-                                       (unittest.TestCase,) + step.__bases__,
+                                       (cls.TestCase,) + step.__bases__,
                                        attrs))
         return test_case_list
 
@@ -415,6 +415,8 @@ class TestState(metaclass=MetaTestState):
             def input(self):
                 type(self).machine.m1()
     """
+    
+    TestCase = unittest.TestCase
 
 
 class MetaServerTestState(MetaTestState):
