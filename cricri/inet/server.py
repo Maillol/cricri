@@ -34,14 +34,14 @@ class Server:
         """
         Test that server logs *expected* on the stdout before *timeout*
         """
-        self._assert_output(operator.eq, '{read} != {expected}',
+        self._assert_output(operator.eq, '{read!r} != {expected!r}',
                             'stdout', expected, timeout)
 
     def assert_stderr_is(self, expected, timeout):
         """
         Test that server logs *expected* on the stderr before *timeout*
         """
-        self._assert_output(operator.eq, '{read} != {expected}',
+        self._assert_output(operator.eq, '{read!r} != {expected!r}',
                             'stderr', expected, timeout)
 
     def assert_stdout_regex(self, regex, timeout):
@@ -65,31 +65,34 @@ class Server:
     def _assert_output(self, test_func, assert_msg,
                        output, expected, timeout):
         read = None
+        read_buffer = ''
         start = time.time()
-        not_expected_reads = b''
+        remaing = timeout
         while read is None:
-            keys = self.selector.select(timeout=timeout)
+            keys = self.selector.select(timeout=remaing)
             if not keys:
                 break
 
             for key, _ in keys:
                 if key.data[0] == output:
-                    read = key.fileobj.read1(4096)
-                    if test_func(read.decode('utf-8'), expected):
+                    read = key.fileobj.read1(4096).decode('utf-8')
+                    if read == '':  # EOF
+                        break
+
+                    read_buffer += read
+                    if test_func(read_buffer, expected):
                         return
 
-                    not_expected_reads += read
                     read = None
                     break
 
-            timeout -= (time.time() - start)
+            remaing = timeout - (time.time() - start)
+            if remaing <= 0:
+                msg = assert_msg.format(expected=expected, read=read_buffer)
+                raise AssertionError('Timeout: ' + msg)
 
-        if read is None:
-            raise AssertionError("Timeout: No data received")
-        else:
-            raise AssertionError(
-                assert_msg.format(expected=expected,
-                                  read=not_expected_reads.decode('utf-8')))
+        raise AssertionError(assert_msg.format(expected=expected,
+                                               read=read_buffer))
 
     def kill(self):
         """
