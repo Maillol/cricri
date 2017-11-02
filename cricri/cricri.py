@@ -329,8 +329,22 @@ class MetaTestState(type):
             unittest hook responsible for loading
             all tests in the package.
             """
-            for test in cls.get_test_cases(max_loop):
-                standard_tests.addTests(loader.loadTestsFromTestCase(test))
+
+            if loader.__module__.startswith('nose2.'):
+                unittest_loader = unittest.TestLoader()
+                for test in cls.get_test_cases(max_loop):
+                    standard_tests.addTests(
+                        unittest_loader.loadTestsFromTestCase(test))
+
+                def suite_factory(extra_tests=()):
+                    return standard_tests
+
+                loader.suiteClass = suite_factory
+
+            else:
+                for test in cls.get_test_cases(max_loop):
+                    standard_tests.addTests(loader.loadTestsFromTestCase(test))
+
             return standard_tests
 
         return load_tests
