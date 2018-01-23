@@ -10,15 +10,17 @@ class Server:
     Wrap server process and provide assert methods.
     """
 
-    def __init__(self, parameters, kill_signal):
+    def __init__(self, parameters, kill_signal, env=None):
         """
         parameters - The list of Popen parameters.
         kill_signal - The signal used to kill the process.
+        env - environement variables dict
         """
         self.popen = Popen(
             parameters,
             stdout=PIPE,
-            stderr=PIPE
+            stderr=PIPE,
+            env=env
         )
 
         self.kill_signal = kill_signal

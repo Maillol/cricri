@@ -9,7 +9,7 @@ import types
 import unittest
 from collections import defaultdict
 
-from voluptuous import ALLOW_EXTRA, Invalid, Optional, Required, Schema
+from voluptuous import ALLOW_EXTRA, Any, Invalid, Optional, Required, Schema
 
 from .algo import walk
 from .inet import Client, Server
@@ -482,7 +482,8 @@ class MetaServerTestState(MetaTestState):
                 {
                     Required("name"): str,
                     Required("cmd"): [str],
-                    Optional("kill-signal", default=signal.SIGINT): int
+                    Optional("kill-signal", default=signal.SIGINT): int,
+                    Optional("env", default=None): Any(None, dict)
                 }
             ]
         }
@@ -534,12 +535,13 @@ class TestServer(metaclass=MetaServerTestState):
     brackets and the OS will then pick a free port. The *timeout*, *tries* and
     *wait* keys are optional and allow you to manage TCP connection.
 
-    The *commands* must be a list containing dict with *name*, *cmd* and
-    "kill-signal" keys.
-    *cmd* is list of sequence of program arguments the first element is a
-    program.
-    *kill-signal* should be a enumeration members of
-    :py:class: `signal.Signals`
+    The *commands* must be a list containing dict with:
+        - name (required) the name of command
+        - cmd (required) list of sequence of program arguments the first
+            element is a program.
+        - kill-signal (optional) should be a enumeration members of
+            :py:class: `signal.Signals`
+        - env (optional) A dict that defines the environment variables
 
     Example::
 
@@ -559,6 +561,9 @@ class TestServer(metaclass=MetaServerTestState):
             commands = [
                 {
                     "name": "my_server",
+                    "env": {
+                        "PYTHONPATH": "path/to/project"
+                    }
                     "cmd": ["python3", "server.py", "{port-1}"],
                 }
             ]
@@ -600,7 +605,7 @@ class TestServer(metaclass=MetaServerTestState):
                 parameters.append(parameter)
 
             cls.servers[command['name']] = Server(
-                parameters, command['kill-signal'])
+                parameters, command['kill-signal'], command['env'])
 
         for attr_name, class_client in type(cls)._class_clients.items():
             for client_init_values in getattr(cls, attr_name):

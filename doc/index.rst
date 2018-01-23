@@ -112,7 +112,13 @@ cricri provides *TestServer* class to test TCP server. You must subclasse
         commands = [
             {
                 "name": "chat-server",
-                "cmd": ["python3", "-u", "chat_server.py", "{port-1}"],
+                "cmd": ["python3", "-u", "chat_server.py", "{port-1}",
+                        "--db-port", "{port-2}"],
+                "env": {"PYTHONPATH": "/home/project/chat"}
+            },
+            {
+                "name": "database",
+                "cmd": ["docker", "run", "-p", "{port-2}:5420", "db-service"],
             }
         ]
 
