@@ -497,7 +497,8 @@ class MetaServerTestState(MetaTestState):
                     Required("name"): str,
                     Required("cmd"): [str],
                     Optional("kill-signal", default=signal.SIGINT): int,
-                    Optional("env", default=None): Any(None, dict)
+                    Optional("env", default=None): Any(None, dict),
+                    Optional("extra-env", default=None): Any(None, dict)
                 }
             ]
         }
@@ -556,6 +557,7 @@ class TestServer(metaclass=MetaServerTestState):
         - kill-signal (optional) should be a enumeration members of
             :py:class: `signal.Signals`
         - env (optional) A dict that defines the environment variables
+        - extra-env (optional) A dict that add environment variables
 
     Example::
 
@@ -617,6 +619,10 @@ class TestServer(metaclass=MetaServerTestState):
                     parameter = parameter.replace(virtual_port, str(port))
 
                 parameters.append(parameter)
+
+            if command['extra-env']:
+                command['env'] = os.environ.copy()
+                command['env'].update(command['extra-env'])
 
             cls.servers[command['name']] = Server(
                 parameters, command['kill-signal'], command['env'])
