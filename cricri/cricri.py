@@ -2,6 +2,7 @@
 Module to generate test scenarios from scenario step.
 """
 
+import os
 import re
 import signal
 import socket
