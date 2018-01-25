@@ -58,9 +58,8 @@ class TestCaseTest(unittest.TestCase):
 
 class TestCustomTestCase(SpyTestState):
 
-
     class BaseTestState(TestState):
-        TestCase = TestCaseTest
+        base_class = TestCaseTest
 
         @classmethod
         def start_scenario(cls):
@@ -69,7 +68,7 @@ class TestCustomTestCase(SpyTestState):
         @classmethod
         def stop_scenario(cls):
             spy('BaseTestState.stop_scenario')
-        
+
     class A(BaseTestState, start=True):
         def input(self):
             pass
@@ -441,4 +440,3 @@ class TestShouldRaiseIfPreviousStepDoesntExist(unittest.TestCase):
                          "The previous `X` defined in"
                          " TestShouldRaiseIfPreviousStepDoesntExist.B class"
                          " doesn't exist")
-

@@ -245,7 +245,7 @@ class MetaTestState(type):
             if not isinstance(mtd, types.MethodType):
                 raise TypeError("{}.{} must be a classmethod"
                                 .format(cls, mtd_name))
-            unbound_super = getattr(cls.TestCase, key_name).__func__
+            unbound_super = getattr(cls.base_class, key_name).__func__
 
             if super_at_start:
                 def func(cls):
@@ -328,7 +328,7 @@ class MetaTestState(type):
 
             mcs._build_str_method(attrs)
             test_case_list.append(type(''.join(scenario),
-                                       (cls.TestCase,) + step.__bases__,
+                                       (cls.base_class,) + step.__bases__,
                                        attrs))
         return test_case_list
 
@@ -366,6 +366,8 @@ class MetaTestState(type):
 
     def __new__(mcs, cls_name, bases, attrs, previous=None, start=False):
         cls = type.__new__(mcs, cls_name, bases, attrs)
+        setattr(cls, 'base_class', getattr(
+            cls, 'base_class', unittest.TestCase))
         if bases:
             if previous is None:
                 cls.previous = []
@@ -441,8 +443,6 @@ class TestState(metaclass=MetaTestState):
             def input(self):
                 type(self).machine.m1()
     """
-    
-    TestCase = unittest.TestCase
 
 
 class MetaServerTestState(MetaTestState):
