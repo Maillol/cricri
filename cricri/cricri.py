@@ -234,7 +234,7 @@ class MetaTestState(type):
         if valids_inputs:
             return valids_inputs[0]
 
-    def _set_mtd(cls, mtd_name, attrs, key_name):
+    def _set_mtd(cls, mtd_name, attrs, key_name, super_at_start=True):
         """
         Add mtd_name to attrs dict.
 
@@ -245,7 +245,19 @@ class MetaTestState(type):
             if not isinstance(mtd, types.MethodType):
                 raise TypeError("{}.{} must be a classmethod"
                                 .format(cls, mtd_name))
-            attrs[key_name] = mtd
+            unbound_super = getattr(cls.TestCase, key_name).__func__
+
+            if super_at_start:
+                def func(cls):
+                    unbound_super(cls)
+                    mtd()
+            else:
+                def func(cls):
+                    mtd()
+                    unbound_super(cls)
+
+            func.__name__ = key_name
+            attrs[key_name] = classmethod(func)
 
     @classmethod
     def _build_str_method(mcs, attrs):
@@ -311,12 +323,12 @@ class MetaTestState(type):
 
                 previous_steps_names.append(step_name)
 
-            cls._set_mtd('start_scenario', attrs, 'setUpClass')
-            cls._set_mtd('stop_scenario', attrs, 'tearDownClass')
+            cls._set_mtd('start_scenario', attrs, 'setUpClass', True)
+            cls._set_mtd('stop_scenario', attrs, 'tearDownClass', False)
 
             mcs._build_str_method(attrs)
             test_case_list.append(type(''.join(scenario),
-                                       (unittest.TestCase,) + step.__bases__,
+                                       (cls.TestCase,) + step.__bases__,
                                        attrs))
         return test_case_list
 
@@ -429,6 +441,8 @@ class TestState(metaclass=MetaTestState):
             def input(self):
                 type(self).machine.m1()
     """
+    
+    TestCase = unittest.TestCase
 
 
 class MetaServerTestState(MetaTestState):
