@@ -3,6 +3,12 @@ from cricri.algo import walk
 
 
 class TestWalk(unittest.TestCase):
+    graph_0 = {
+        'A': [],
+    }
+
+    expected_0 = (('A',),)
+
     graph_1 = {
         'A': ['B'],
         'B': ['C'],
@@ -64,6 +70,10 @@ class TestWalk(unittest.TestCase):
          'B', 'A', 'B', 'A', 'B',
          'A', 'B', 'A', 'B', 'A')
     ]
+
+    def test_graph_0(self):
+        pathes = walk(self.graph_0, 'A')
+        self.assertCountEqual(pathes, self.expected_0)
 
     def test_graph_1(self):
         pathes = walk(self.graph_1, 'A')

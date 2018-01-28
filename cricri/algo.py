@@ -74,7 +74,10 @@ def all_longer_path(graph, start, path, sub_path_explored, out):
                             sub_path_explored | {sub_path},
                             out)
     if flag:
-        out.append(tuple(e[0] for e in path) + (path[-1][-1],))
+        if len(graph) == 1:
+            out.append((start,))
+        else:
+            out.append(tuple(e[0] for e in path) + (path[-1][-1],))
 
 
 def walk(graph, start, nb_loop=0):
