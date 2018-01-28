@@ -3,6 +3,7 @@ Utility to test HTTP server
 """
 
 import json
+import pprint
 import socket
 import time
 from urllib.parse import parse_qsl, urlencode
@@ -62,6 +63,18 @@ class HTTPResponse:
         deserializer = type(self).deserializers.get(content_type, str)
         return deserializer(response.read().decode(charset))
 
+    def _formated_content(self):
+        """
+        Format content for traceback
+        """
+        content = self.content
+        if self.status_code == 204 and not content:
+            return ''
+
+        if not isinstance(content, str):
+            content = pprint.pformat(content, width=76)
+        return '    ' + '\n    '.join(content.splitlines())
+
     def assert_header_has(self, header, expected_value, separator=','):
         """
         Test if header of HTTP response contains the expected_value.
@@ -103,8 +116,10 @@ class HTTPResponse:
         Test if status code of HTTP response is *status_code*
         """
         if self.status_code != status_code:
-            raise AssertionError('status code expected: {} found: {}'
-                                 .format(status_code, self.status_code))
+            raise AssertionError('status code expected: {} found: ({} {})\n'
+                                 '  Content:\n{}'
+                                 .format(status_code, self.status_code,
+                                         self.reason, self._formated_content()))
 
     def assert_reason(self, reason):
         """
@@ -112,7 +127,9 @@ class HTTPResponse:
         """
         if self.reason != reason:
             raise AssertionError('reason expected: {} found: {}'
-                                 .format(reason, self.reason))
+                                 '  Content:\n{}'
+                                 .format(reason, self.reason,
+                                         self._formated_content()))
 
     def __getattribute__(self, name):
         if name.startswith('assert') and not self.response_provided:
