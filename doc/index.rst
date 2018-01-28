@@ -100,6 +100,14 @@ You will see the following output::
 
     OK
 
+If you want use **pytest** to launch this script, you should install `pytest-cricri`_
+
+:kbd:`pip install pytest-cricri`
+
+You can launch test with pytest using `--cricri` option
+
+:kbd:`pytest --cricri test_scenario_list.BaseTestState`
+
 
 Test TCP server
 ===============
@@ -425,4 +433,7 @@ Cricri provides shortcut decorators:
 +---------------------------------+--------------------------------------------+
 | @newer(step1, step2)            | @conditon(Newer(step1, step2))             |
 +---------------------------------+--------------------------------------------+
+
+
+.. _pytest-cricri: https://github.com/Maillol/pytest_cricri
 
