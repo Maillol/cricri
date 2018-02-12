@@ -424,17 +424,20 @@ class TestState(metaclass=MetaTestState):
           |    m2()                  |
           +---------------->---------+
 
-        class StateA(TestState, start=True):
+        class Base(TestState):
+            pass
+
+        class StateA(Base, start=True):
             def input(self):
                 type(self).machine = Machine()
 
 
-        class StateB(TestState, previous=['StateA']):
+        class StateB(Base, previous=['StateA']):
             def input(self):
                 type(self).machine.m1()
 
 
-        class StateC(TestState, previous=['StateA', 'StateB']):
+        class StateC(Base, previous=['StateA', 'StateB']):
 
             @previous(['StateA'])
             def input(self):
