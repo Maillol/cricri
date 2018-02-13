@@ -94,6 +94,7 @@ class MetaTestState(type):
 
     steps = defaultdict(dict)
     start_step = {}
+    _roots = set()
 
     class PrefixTestMethod:
         """
@@ -234,6 +235,7 @@ class MetaTestState(type):
 
         if valids_inputs:
             return valids_inputs[0]
+        return None
 
     def _set_mtd(cls, mtd_name, attrs, key_name, super_at_start=True):
         """
@@ -304,8 +306,13 @@ class MetaTestState(type):
 
             for step_num, step_name in enumerate(scenario):
                 step = mcs.steps[cls][step_name]
-                input_method = mcs._select_input_method(step.inputs,
-                                                        previous_steps_names)
+
+                if not step.inputs:
+                    def input_method(self):
+                        return None
+                else:
+                    input_method = mcs._select_input_method(
+                        step.inputs, previous_steps_names)
 
                 test_methods = tuple(
                     sorted((name, attr)
@@ -327,6 +334,7 @@ class MetaTestState(type):
             cls._set_mtd('start_scenario', attrs, 'setUpClass', True)
             cls._set_mtd('stop_scenario', attrs, 'tearDownClass', False)
 
+            attrs['__generated_by_cricri__'] = True
             mcs._build_str_method(attrs)
             test_case_list.append(type(''.join(scenario),
                                        (cls.base_class,) + step.__bases__,
@@ -367,9 +375,19 @@ class MetaTestState(type):
 
     def __new__(mcs, cls_name, bases, attrs, previous=None, start=False):
         cls = type.__new__(mcs, cls_name, bases, attrs)
-        setattr(cls, 'base_class', getattr(
-            cls, 'base_class', unittest.TestCase))
+        if '__generated_by_cricri__' in attrs:
+            return cls
+
         if bases:
+            base = next(base for base in bases
+                        if isinstance(base, mcs))
+
+            #  If cls is a direct TestState/TestServer subclass.
+            if base in mcs._roots:
+                setattr(cls, 'base_class', getattr(
+                    cls, 'base_class', unittest.TestCase))
+                return cls
+
             if previous is None:
                 cls.previous = []
             else:
@@ -381,9 +399,6 @@ class MetaTestState(type):
                                     ' (`{}` found in `{}`)'.
                                     format(step, cls_name))
 
-            base = next(base for base in bases
-                        if isinstance(base, mcs))
-
             mcs.steps[base][cls_name] = cls
             if start:
                 if base in mcs.start_step:
@@ -392,6 +407,9 @@ class MetaTestState(type):
                                          .format(mcs.start_step[base], cls_name))
 
                 mcs.start_step[base] = cls_name
+
+        else:
+            mcs._roots.add(cls)
 
         return cls
 

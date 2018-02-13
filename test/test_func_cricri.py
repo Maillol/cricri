@@ -391,6 +391,20 @@ class TestInputWithCondition(SpyTestState):
                          "D.test_1"))
 
 
+class TestWithoutDefinedInputShouldRun(SpyTestState):
+
+    class BaseTestState(TestState):
+        ...
+
+    class A(BaseTestState, start=True):
+        def test_1(self):
+            spy('A.test_1')
+
+    def test_execute_ab2cd(self):
+        self.assertExec('A',
+                        ("A.test_1",))
+
+
 class TestShouldRaiseIfCannotChooseInput(unittest.TestCase):
 
     class BaseTestState(TestState):
