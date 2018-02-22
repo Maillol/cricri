@@ -477,7 +477,50 @@ class MetaServerTestState(MetaTestState):
     @classmethod
     def bind_class_client(mcs, class_client):
         """
-        Allow each `TestServer` subclass to manage a new `Client`.
+        You can use the `bind_class_client̀` method to allow each `TestServer`
+        subclass to manage a new `Client`.
+
+        To crete a new `Client`, you should subclass `cricri.inet.Client` and
+        define the `validator` static method and the `close` method.
+
+        .. testcode::
+
+            from urllib.request import urlopen
+
+            from cricri import MetaServerTestState
+            from cricri.inet import Client
+
+
+            class MyCustomClient(Client):
+
+                attr_name = 'my_custom_clients'
+
+                def __init__(self, host):
+                    self.host = host
+                    self.response = None
+
+                @staticmethod
+                def validator():
+                    return {
+                        'host': str
+                    }
+
+                def close(self):
+                    if self.response is not None:
+                        self.response.close()
+
+                def url_open(self, page):
+                    self.response = self.urlopen(self.host + '/' + page)
+                    self.content = self.response.read()
+
+                def assert_page_content(self, text):
+                    if text not in self.content:
+                        raise AssertionError(
+                            '{} in not {}'.format(text, self.content))
+
+
+            MetaServerTestState.bind_class_client(MyCustomClient)
+
         """
         if not issubclass(class_client, Client):
             raise TypeError('First parameters should be a `Client` subclass')
@@ -576,7 +619,7 @@ class TestServer(metaclass=MetaServerTestState):
         - name (required) the name of command
         - cmd (required) list of sequence of program arguments the first
             element is a program.
-        - kill-signal (optional) should be a enumeration members of
+        - kill-signal (optional) should be an enumeration members of
             :py:class: `signal.Signals`
         - env (optional) A dict that defines the environment variables
         - extra-env (optional) A dict that add environment variables
@@ -654,7 +697,8 @@ class TestServer(metaclass=MetaServerTestState):
                 client_init_values = client_init_values.copy()
                 port = client_init_values.get('port')
                 if port is not None:
-                    if isinstance(port, str) and port.startswith('{') and port.endswith('}'):
+                    if isinstance(port, str) and port.startswith(
+                            '{') and port.endswith('}'):
                         client_init_values['port'] = cls.virtual_ports[port]
 
                 client_name = client_init_values.pop('name')

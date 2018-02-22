@@ -9,14 +9,15 @@ port_def = Any(
 
 class Client:
     """
-    `cricri.cricri.TestServer` instanciates Client sub-classes.
+    `cricri.inet.TestServer` instanciates Client sub-classes.
 
     Client sub-classes should have `attr_name` attribute containing a string.
-    `cricri.cricri.TestServer` will use `attr_name` to create an entry point to
+    `cricri.inet.TestServer` will use `attr_name` to create an entry point to
     intantiate clients. If attr_name is 'foo_clients', you can create a
     foo_clients list in TestServer sub class to instanciate FooClient.
 
-    Example:
+    Example::
+
         class FooClient(Client):
 
             attr_name = foo_clients

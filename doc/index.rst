@@ -15,11 +15,11 @@ path. You can disable test steps depending on the path traveled.
 Installation
 =============
 
-Installing with pip::
+You can install the latest stable release with pip::
 
     pip install cricri
 
-Installing with git::
+or install the latest development release (unstable) with git::
 
     git clone https://github.com/Maillol/cricri.git cricri
     cd cricri
@@ -29,7 +29,9 @@ Installing with git::
 Basic example
 =============
 
-Here is a simple example with three steps to generate two scenario wich test list method::
+Here is a simple example with three steps to generate two scenario wich test list method
+
+.. testcode::
 
     from cricri import TestState, previous
 
@@ -109,166 +111,6 @@ You can launch test with pytest using `--cricri` option
 :kbd:`pytest --cricri test_scenario_list.BaseTestState`
 
 
-Test TCP server
-===============
-
-cricri provides *TestServer* class to test TCP server. You must subclasse
-*TestServer* and define your servers and clients::
-
-    class TestChatServer(TestServer):
-
-        commands = [
-            {
-                "name": "chat-server",
-                "cmd": ["python3", "-u", "chat_server.py", "{port-1}",
-                        "--db-port", "{port-2}"],
-                "env": {"PYTHONPATH": "/home/project/chat"}
-            },
-            {
-                "name": "database",
-                "cmd": ["docker", "run", "-p", "{port-2}:5420", "db-service"],
-            }
-        ]
-
-        tcp_clients = [
-            {
-                "name": "Alice",
-                "port": "{port-1}",
-            }
-        ]
-
-This example define *TestChatServer* class, which define command to launch server and
-tcp client. Before each scenario running, 'python3 -u chat_server.py {port-1}' is executed
-and a tcp client is connected to '{port-1}'. The string '{port-1}' will be bound by the
-fist free TCP port.
-
-You may reference defined clients and servers in your *TestChatServer* subclasses using *clients*
-and *servers* attributes::
-
-    class Start(TestChatServer, start=True):
-
-        def test_server_listen(self):
-            self.servers['chat-server'].assert_stdout_is(
-                'server listen', timeout=2
-            )
-
-    class AliceAskedNickname(TestChatServer, previous=["Start"]):
-
-        def input(self):
-            self.clients["Alice"].send("MY_NAME_IS;Alice;")
-
-        def test_alice_should_receive_ok(self):
-            self.clients["Alice"].assert_receive('OK')
-
-
-In this example, the *Start* step class test that server write 'server listen' to stdout.
-The *AliceAskedNickname* class send 'MY_NAME_IS;Alice;' string to the server and test that
-Alice receive 'OK'.
-
-
-Assert TCP client methods
--------------------------
-
-.. method:: assert_receive(self, expected, timeout=2)
-
-    Test that client received *expected* before *timeout*.
-
-.. method:: assert_receive_regex(self, regex, timeout=2)
-
-    Test that client received data before *timeout* and data matches *regex*.
-
-
-Assert server methods
----------------------
-
-.. method:: assert_stdout_is(expected, timeout=2)
-
-    Test that server logs *expected* on the stdout before *timeout*.
-
-.. method:: assert_stderr_is(expected, timeout=2)
-
-    Test that server logs *expected* on the stderr before *timeout*.
-
-.. method:: assert_stdout_regex(regex, timeout=2)
-
-    Test that server logs on stdout before *timeout* and message matches *regex*.
-
-.. method:: assert_stderr_regex(regex, timeout=2)
-
-    Test that server logs on stderr before *timeout* and message matches *regex*.
-
-
-Test HTTP server or REST API
-============================
-
-You can create HTTP client using http_clients attribute in a *TestServer* subclasse::
-
-    class TestRestServer(TestServer):
-
-        http_clients = [
-            {
-                "name": "Alice",
-                "host": "127.0.0.1",
-                "port": "{port-1}",
-                "extra_headers": [
-                    ('Content-Type', 'application/json')
-                ]
-            }
-        ]
-
-
-http_client available parameter
--------------------------------
-
-.. automethod:: cricri.inet.http_client.HTTPClient.__init__
-
-Your HTTP clients are instantiate in *clients* class attribute and you may use them in the *input
-method*::
-
-    class GetHotels(TestRestServer, start=True):
-
-        def input(self):
-            self.clients["Alice"].get("/hotels")
-
-
-HTTPClient methods
-------------------
-
-.. automethod:: cricri.inet.http_client.HTTPClient.request
-.. automethod:: cricri.inet.http_client.HTTPClient.get
-.. automethod:: cricri.inet.http_client.HTTPClient.post
-.. automethod:: cricri.inet.http_client.HTTPClient.put
-.. automethod:: cricri.inet.http_client.HTTPClient.delete
-.. automethod:: cricri.inet.http_client.HTTPClient.patch
-
-Response testing
-----------------
-
-The client stores HTTP response in response attribute using HTTPResponse
-object. This HTTPResponse object provide methods useful for test server.
-
-.. automethod:: cricri.inet.http_client.HTTPResponse.assert_header_has
-.. automethod:: cricri.inet.http_client.HTTPResponse.assert_header_is
-.. automethod:: cricri.inet.http_client.HTTPResponse.assert_status_code
-.. automethod:: cricri.inet.http_client.HTTPResponse.assert_reason
-
-Example::
-
-    class GetHotels(TestRestServer, start=True):
-
-        def test_status_code_should_be_200(self):
-            self.clients["Alice"].response.assert_status_code(200)
-
-        def test_content_has_hotel_california(self):
-            content = self.clients["Alice"].response.content
-            expected = ({
-                "name": "California",
-                "addr": "1976 eagles street"
-            },)
-
-            self.assertCountEqual(content, expected)
-
-
 condition decorator
 ===================
 
@@ -306,134 +148,23 @@ Example::
 Note that TestState subsubclass can have several input methods if **condition** decorator is used.
 
 
-Condition object
-================
+Documentation
+=============
 
-The Conditions objets are used in **condition** decorator.
+.. toctree::
+   :maxdepth: 2
 
-You can combine Condition objects using operator.
-
-+------------+------------+----------------------------------+
-| Operator   | Meaning    | Example                          |
-+============+============+==================================+
-|  \-        | not        | \- Path('A', 'B')                |
-+------------+------------+----------------------------------+
-|  &         | and        | Path('A', 'B') & Path('F', 'G')  |
-+------------+------------+----------------------------------+
-|  \|        | or         | Path('A', 'B') \| Path('F', 'G') |
-+------------+------------+----------------------------------+
-
-Built-in Condition
-------------------
-
-Previous
-~~~~~~~~
-
-Previous(step [,step2 [...]]) is enable if last executed step is in given steps.
-
-Example:
-
-+-----------------------------------------------+
-|       @condition(Previous("I", "J"))          |
-+----------------+------------------------------+
-| Executed steps | Decorated method is executed |
-+================+==============================+
-| K, I, J        | True                         |
-+----------------+------------------------------+
-| K, J, I        | True                         |
-+----------------+------------------------------+
-| J, I, K        | False                        |
-+----------------+------------------------------+
-| I, J, K        | False                        |
-+----------------+------------------------------+
-| J              | True                         |
-+----------------+------------------------------+
-| I              | True                         |
-+----------------+------------------------------+
-
-Path
-~~~~
-
-Path(step [,step2 [...]]) is enable if the given contigious steps have executed.
-
-Example:
-
-+-----------------------------------------------+
-|        @condition(Path("I", "J"))             |
-+----------------+------------------------------+
-| Executed steps | Decorated method is executed |
-+================+==============================+
-| I, J           | True                         |
-+----------------+------------------------------+
-| J, I, J, I     | True                         |
-+----------------+------------------------------+
-| J, I           | False                        |
-+----------------+------------------------------+
-| I, K, J        | False                        |
-+----------------+------------------------------+
-| K, J           | False                        |
-+----------------+------------------------------+
-
-Newer
-~~~~~
-
-Newer(step1, step2) is enable if step2 execution is newer than step1 execution or step1 has not executed.
-
-Example:
-
-+-----------------------------------------------+
-|        @condition(Newer("I", "J"))            |
-+----------------+------------------------------+
-| Executed steps | Decorated method is executed |
-+================+==============================+
-| I, J           | True                         |
-+----------------+------------------------------+
-| J, I, J, I     | False                        |
-+----------------+------------------------------+
-| J, I           | False                        |
-+----------------+------------------------------+
-| I, K, J        | True                         |
-+----------------+------------------------------+
-| K, J           | True                         |
-+----------------+------------------------------+
-| K, I           | False                        |
-+----------------+------------------------------+
+   condition-object
+   test-server/index.rst
+   tips
 
 
-How to create a custom Condition
---------------------------------
+Contributing
+============
 
-You can create a custom Condition by inheriting from Condition class and overriding the \_\_call__ method.
-The \_\_call__ method takes *previous_steps* parameter - *previous_steps* parameters is a list of executed step names -
-and return True if decorated method must be executed else False.
-
-Here is a Condition wich is enable when step appears a given number of times::
-
-    class Count(Condition):
-
-        def __init__(self, step, count):
-            self.step = step
-            self.count = count
-
-        def __call__(self, previous_steps):
-            previous_steps = tuple(previous_steps)
-            return previous_steps.count(self.step) ==  self.count
-
-Shortcut
-========
-
-Cricri provides shortcut decorators:
-
-+---------------------------------+--------------------------------------------+
-| shortcut                        | means                                      |
-+=================================+============================================+
-| @previous(step [,step2 [...]])  | @conditon(Previous(step [,step2 [...]]))   |
-+---------------------------------+--------------------------------------------+
-| @path(step [,step2 [...]])      | @conditon(Path(step [,step2 [...]]))       |
-+---------------------------------+--------------------------------------------+
-| @newer(step1, step2)            | @conditon(Newer(step1, step2))             |
-+---------------------------------+--------------------------------------------+
+Contributions are welcome! Clone the repository on `GitHub`_.
 
 
+.. _GitHub: https://github.com/maillol/cricri
 .. _pytest-cricri: https://github.com/Maillol/pytest_cricri
 
