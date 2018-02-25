@@ -1,3 +1,5 @@
+import os
+
 from cricri import TestServer, previous, Newer, Path, condition
 
 
@@ -19,7 +21,10 @@ class TestChatServer(TestServer):
     commands = [
         {
             "name": "chat-server",
-            "cmd": ["python3", "-u", "chat_server.py", "{port-1}"],
+            "cmd": ["python3", "-u", "-m", "chat_server", "{port-1}"],
+            "extra-env": {
+                "PYTHONPATH": os.environ.get('PYTHONPATH')
+            }
         }
     ]
 
