@@ -1,3 +1,4 @@
+import os
 import signal
 
 from cricri import TestServer, previous, Newer, Path, condition
@@ -20,7 +21,10 @@ class TestRestServer(TestServer):
     commands = [
         {
             "name": "chat-server",
-            "cmd": ["python3", "-u", "rest.py", "{port-1}"],
+            "cmd": ["python3", "-u", "-m", "rest", "{port-1}"],
+            "extra-env": {
+                "PYTHONPATH": os.environ.get('PYTHONPATH')
+            },
             "kill-signal": signal.SIGKILL
         }
     ]

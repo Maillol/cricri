@@ -24,11 +24,11 @@ class MultiDict(dict):
     """
     MultiDict(multi_values_mapping[, ...]) --> dict with multiple values per key.
 
-    >>> md = MultiDict(dict(foo=fooes), a=42)
+    >>> md = MultiDict(dict(foo='fooes'), a=42)
     >>> md['foo'] = 1
     >>> md['foo'] = 4
-    >>> md
-    {'fooes': [1, 4], 'a': 42}
+    >>> md == {'fooes': [1, 4], 'a': 42}
+    True
     """
 
     def __init__(self, *args, **kwargs):

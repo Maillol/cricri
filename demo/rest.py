@@ -1,8 +1,6 @@
 import cherrypy
 import json
-import random
 import sys
-from time import sleep
 import uuid
 
 
