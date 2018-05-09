@@ -334,6 +334,11 @@ class MetaTestState(type):
             cls._set_mtd('start_scenario', attrs, 'setUpClass', True)
             cls._set_mtd('stop_scenario', attrs, 'tearDownClass', False)
 
+            for met_name in ('tearDown', 'setUp'):
+                mtd = getattr(cls, met_name, None)
+                if mtd is not None:
+                    attrs[met_name] = mtd
+
             attrs['__generated_by_cricri__'] = True
             mcs._build_str_method(attrs)
             test_case_list.append(type(''.join(scenario),
@@ -655,6 +660,13 @@ class TestServer(metaclass=MetaServerTestState):
     clients = {}
     servers = {}
 
+    def setUp(self):
+        words = self.id().rsplit('.', 1)[-1].split('_')
+        del words[1]
+        name = '_'.join(words)
+        for server in self.servers.values():
+            server.history.new_section(name)
+
     @staticmethod
     def get_free_tcp_port():
         """
@@ -669,8 +681,8 @@ class TestServer(metaclass=MetaServerTestState):
     @classmethod
     def start_scenario(cls):
         """
-        Launches defined servers and provides *clients*, *servers* and
-        *virtual_ports* class attributes.
+        Builds Servers object from `commands` description and client from
+        `*_client` description, and binds them to asyncio event loop.
         """
         for command in cls.commands:
             parameters = []
@@ -707,11 +719,19 @@ class TestServer(metaclass=MetaServerTestState):
     @classmethod
     def stop_scenario(cls):
         """
-        Kill servers
+        Kill servers and print recorded log for each servers.
         """
         for client in cls.clients.values():
             client.close()
-        for server in cls.servers.values():
+
+        for server_name, server in cls.servers.items():
+            print('{:=^78}'.format(' LOG: {} '.format(server_name)))
+            for section, log in server.history:
+                print('{:-^78}'.format(' {} '.format(section)))
+                print('{:~^78}'.format(' stdout '))
+                print(log[1])
+                print('{:~^78}'.format(' stderr '))
+                print(log[2])
             server.kill()
 
         cls.virtual_ports.clear()

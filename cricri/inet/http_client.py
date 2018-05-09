@@ -10,7 +10,7 @@ from urllib.parse import parse_qsl, urlencode
 from urllib.request import HTTPError, Request, urlopen
 from xml.dom.minidom import parseString
 
-from voluptuous import (All, Any, Optional, Range, Required, Schema)
+from voluptuous import (All, Any, Optional, Range, Required)
 
 from . import Client, port_def
 from ..__version__ import __version__

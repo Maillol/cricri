@@ -1,9 +1,10 @@
 import unittest
+import unittest.mock
 
 import voluptuous
 
 from cricri.cricri import (MetaServerTestState, MetaTestState, MultiDict,
-                           TestServer, walk)
+                           TestServer)
 from cricri.inet import Client
 
 
@@ -83,6 +84,7 @@ class TestCustomClientCreation(unittest.TestCase):
         MySubClass.start_scenario()
         self.spy.assert_called_with(
             {'foo': 38938, 'bar': 'def bar'})
+        MySubClass.stop_scenario()
 
     def test_stop_scenario_should_stop_client(self):
 
