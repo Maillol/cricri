@@ -1,7 +1,18 @@
 language: python
 python:
-  - "3.4"
-  - "3.5"
-  - "3.6-dev"
+  - "3.7"
+  - "3.8-dev"
 
-script: python -m unittest
+env: PYTHONPATH=$PYTHONPATH:$TRAVIS_BUILD_DIR/demo
+
+script:
+    - python3 -m unittest
+    - pytest -p no:python --doctest-modules cricri
+    - pytest -p no:python --cricri test_coin_operated_turnstile.TestTurnstile --cricri test_chat_server.TestChatServer
+    - python3 -m unittest demo/test_rest.py demo/test_statemachine.py
+    - sphinx-build -b doctest -d doc/_build/doctrees doc/ doc/_build/doctest
+
+install:
+    - pip install -r requirements.txt
+    - pip install -r demo/requirements.txt
+
