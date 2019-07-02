@@ -36,8 +36,8 @@ An example to test a state machine.
 
 .. class:: no-web
 
-    .. image:: https://www.planttext.com/plantuml/img/ur9GSbHIq2tAJCyeqRMBpZMCLL1oKk824N1H1P2maZD85AGMB604L0SK0G00
-        :alt: HTTPie compared to cURL
+    .. image:: https://www.plantuml.com/plantuml/svg/SoWkIImgAStDuUBISDHKqDMrKz1mqhHIo3Na0j8GlZE8RuoG1_EDkBWSKlDIW3e1
+        :alt: state machine (A) --> (B):m1; (A) --> (C):m2; (B) --> (C):m3
         :align: center
      
 
