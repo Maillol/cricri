@@ -627,7 +627,7 @@ class TestServer(metaclass=MetaServerTestState):
         - kill-signal (optional) should be an enumeration members of
             :py:class: `signal.Signals`
         - env (optional) A dict that defines the environment variables
-        - extra-env (optional) A dict that add environment variables
+        - extra-env (optional) A dict that adds environment variables
 
     Example::
 
